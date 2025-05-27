@@ -74,13 +74,15 @@ Incluye:
 
 def generar_outline(nombre_del_curso, nivel, perfil_ingreso, objetivos_mejorados):
     prompt = f"""Crea un temario tipo tabla Markdown para el curso "{nombre_del_curso}" (nivel {nivel}).
-
-Dirigido a: {perfil_ingreso}
-
-Objetivos:
-{objetivos_mejorados}
-
-Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos."""
+    
+    Dirigido a: {perfil_ingreso}
+    
+    Objetivos:
+    {objetivos_mejorados}
+    
+    El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
+    Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos.
+    Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas."""
     return call_gpt(prompt)
 
 # === Generar partes del syllabus
@@ -179,20 +181,22 @@ def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=No
         Público objetivo: {publico}
         Curso siguiente: {siguiente}
         
-        Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos
+        El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
+        Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos.
+        Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas.
         """
         markdown = call_gpt(prompt)
     else:
         # Usar el outline proporcionado
         markdown = outline
-        
+    
     # Convertir Markdown a DataFrame
     lines = [line.strip() for line in markdown.splitlines() if "|" in line and not line.startswith("|---")]
     clean = "\n".join(lines)
     df = pd.read_csv(io.StringIO(clean), sep="|", engine="python", skipinitialspace=True)
     df = df.dropna(axis=1, how="all")
     df.columns = [col.strip() for col in df.columns]
-
+    
     # Crear Google Sheets
     sheet = sheets_service.spreadsheets().create(
         body={"properties": {"title": f"Outline - {nombre}"}},
@@ -266,4 +270,3 @@ def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=No
     ).execute()
     
     return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
-
