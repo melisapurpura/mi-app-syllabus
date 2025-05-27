@@ -84,8 +84,8 @@ def generar_outline(nombre_del_curso, nivel, perfil_ingreso, objetivos_mejorados
     
     El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
     Incluye columnas: Semana (numero de semana), Clase(nombre de la clase), Conceptos clave (3 conceptos clave por clase), 
-    Descripción (descripción de la clase, está descripción la utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
-    , Objetivos (objetivos de la clase, estos objetivos los utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
+    Descripción (descripción detallada de la clase, está descripción la utilizazará un llm en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
+    ,Objetivos (objetivos detallados de la clase, estos objetivos los utilizazará un llm en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
     Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc.
             ."""
     return call_gpt(prompt)
@@ -97,13 +97,13 @@ def generar_syllabus_partes(perfil_ingreso, perfil_egreso, objetivos_mejorados, 
     
     Incluye las siguientes partes:
     
-    1. [GENERALIDADES_DEL_PROGRAMA]
+    [GENERALIDADES_DEL_PROGRAMA]
     Parrafo corto que combine la descripción del curso, el objetivo general (en una frase) y el perfil de egreso (en una frase).
     
-    2. [PERFIL_INGRESO]
+    [PERFIL_INGRESO]
     Un parrafo corto con el perfil de ingreso.
     
-    3. [DETALLES_PLAN_ESTUDIOS]
+    [DETALLES_PLAN_ESTUDIOS]
     Una lista con las clases del curso. Cada clase debe tener título y una breve descripción.
     
     Perfil de ingreso:
@@ -134,23 +134,23 @@ def generar_syllabus_partes(perfil_ingreso, perfil_egreso, objetivos_mejorados, 
     {objetivos_mejorados}
     
     Para cada uno, proporciona:
-    1. [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
-    El título del primer objetivo secundario (solo el título, sin número ni descripción).
+    [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
+    El título del primer objetivo secundario (solo el título del objetivo, sin número ni descripción).
     
-    2. [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
-    Una descripción muy breve del primer objetivo secundario (máximo 2 líneas).
+    [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
+    Una descripción muy breve del primer objetivo secundario (máximo 3 líneas).
     
-    3. [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
-    El título del segundo objetivo secundario (solo el título, sin número ni descripción).
+    [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
+    El título del segundo objetivo secundario (solo el título del objetivo,, sin número ni descripción).
     
-    4. [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
-    Una descripción muy breve del segundo objetivo secundario (máximo 2 líneas).
+    [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
+    Una descripción muy breve del segundo objetivo secundario (máximo 3 líneas).
     
-    5. [TITULO_TERCER_OBJETIVO_SECUNDARIO]
-    El título del tercer objetivo secundario (solo el título, sin número ni descripción).
+    [TITULO_TERCER_OBJETIVO_SECUNDARIO]
+    El título del tercer objetivo secundario (solo el título del objetivo,, sin número ni descripción).
     
-    6. [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
-    Una descripción muy breve del tercer objetivo secundario (máximo 2 líneas).
+    [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
+    Una descripción muy breve del tercer objetivo secundario (máximo 3 líneas).
     
     Las descripciones deben ser concisas y no repetir el contenido de las generalidades del programa.
     """
@@ -248,12 +248,11 @@ def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=No
         Público objetivo: {publico}
         Curso siguiente: {siguiente}
         
-        El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
-        Incluye columnas: Semana (numero de semana), Clase(nombre de la clase), Conceptos clave (3 conceptos clave por clase), 
-        Descripción (descripción de la clase, está descripción la utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
-        , Objetivos (objetivos de la clase, estos objetivos los utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
-        Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc.
-            
+            El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
+    Incluye columnas: Semana (numero de semana), Clase(nombre de la clase), Conceptos clave (3 conceptos clave por clase), 
+    Descripción (descripción detallada de la clase, está descripción la utilizazará un llm en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
+    , Objetivos (objetivos detallados de la clase, estos objetivos los utilizazará un llm en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
+    Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc.
         """
         markdown = call_gpt(prompt)
     else:
