@@ -233,7 +233,8 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
     drive_service.permissions().create(
             fileId=document_id,
             body={"type": "user", "role": "owner", "emailAddress": "melisa@datarebels.mx", "transferOwnership": True},
-            fields="id"
+            fields="id",
+            transferOwnership=True
         ).execute()
         
     # Luego, dar permisos de escritura al dominio
@@ -343,7 +344,8 @@ def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=No
     drive_service.permissions().create(
         fileId=spreadsheet_id,
         body={"type": "user", "role": "owner", "emailAddress": "melisa@datarebels.mx", "transferOwnership": True},
-        fields="id"
+        fields="id",
+        transferOwnership=True
     ).execute()
 
     # Compartir
