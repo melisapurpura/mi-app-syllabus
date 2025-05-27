@@ -82,12 +82,34 @@ def generar_outline(nombre_del_curso, nivel, perfil_ingreso, objetivos_mejorados
     Objetivos:
     {objetivos_mejorados}
     
-    El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
-    Incluye columnas: Semana (numero de semana), Clase(nombre de la clase), Conceptos clave (3 conceptos clave por clase), 
-    Descripción (descripción detallada de la clase, está descripción la utilizazará un llm en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
-    ,Objetivos (objetivos detallados de la clase, estos objetivos los utilizazará un llm en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
-    Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc.
-            ."""
+    Requisitos:
+        - El curso dura 3 semanas.
+        - Cada semana incluye exactamente 4 clases (12 clases en total).
+        - No repitas títulos ni uses “parte 1 / parte 2”.
+        - Cada clase debe tener un enfoque único.
+
+        Entrega una tabla en formato Markdown con las siguientes columnas:
+
+        1. Semana  
+        2. Clase (nombre breve y distinto)  
+        3. Conceptos clave (exactamente 3, numerados, distintos entre clases)  
+        4. Descripción (párrafo claro que explique qué se verá en la clase. Será usado por otro modelo para crear una presentación desde cero. Incluye contexto, ejemplos, enfoque didáctico y qué aprenderá el alumno).  
+        5. Objetivos (3 objetivos claros, distintos entre sí, centrados en habilidades o conocimientos que se desarrollarán en esa clase)
+
+        Ejemplo para “Conceptos clave”:
+        1. Ciclo de vida del dato  
+        2. Analítica descriptiva  
+        3. KPIs de negocio
+
+        Ejemplo para “Objetivos”:
+        - Comprender las fases del ciclo de vida de los datos.  
+        - Analizar un ejemplo real usando analítica descriptiva.  
+        - Evaluar qué KPI es más relevante según el contexto de negocio.
+
+        Asegúrate de que:
+        - No se repitan conceptos clave entre clases.
+        - Los objetivos estén bien diferenciados."""
+    
     return call_gpt(prompt)
 
 # === Generar partes del syllabus
@@ -239,22 +261,45 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
     return f"https://docs.google.com/document/d/{document_id}/edit"
 
 # Modificada para aceptar el outline como parámetro
-def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=None):
+def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline=None):
     # Si no se proporciona un outline, generarlo
     if outline is None:
         prompt = f"""
-        Crea un temario tipo tabla Markdown para un curso llamado "{nombre}" (nivel {nivel}), con estos objetivos:
-        {objetivos}
-        
-        Público objetivo: {publico}
-        Curso siguiente: {siguiente}
-        
-            El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
-    Incluye columnas: Semana (numero de semana), Clase(nombre de la clase), Conceptos clave (3 conceptos clave por clase), 
-    Descripción (descripción detallada de la clase, está descripción la utilizazará un llm en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
-    , Objetivos (objetivos detallados de la clase, estos objetivos los utilizazará un llm en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
-    Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc.
+        Eres un experto en diseño instruccional. Crea el outline de un curso llamado "{nombre_del_curso}" (nivel {nivel}) con base en estos objetivos:
+
+        {objetivos_mejorados}
+
+        Público objetivo: {perfil_ingreso}
+
+        Requisitos:
+        - El curso dura 3 semanas.
+        - Cada semana incluye exactamente 4 clases (12 clases en total).
+        - No repitas títulos ni uses “parte 1 / parte 2”.
+        - Cada clase debe tener un enfoque único.
+
+        Entrega una tabla en formato Markdown con las siguientes columnas:
+
+        1. Semana  
+        2. Clase (nombre breve y distinto)  
+        3. Conceptos clave (exactamente 3, numerados, distintos entre clases)  
+        4. Descripción (párrafo claro que explique qué se verá en la clase. Será usado por otro modelo para crear una presentación desde cero. Incluye contexto, ejemplos, enfoque didáctico y qué aprenderá el alumno).  
+        5. Objetivos (3 objetivos claros, distintos entre sí, centrados en habilidades o conocimientos que se desarrollarán en esa clase)
+
+        Ejemplo para “Conceptos clave”:
+        1. Ciclo de vida del dato  
+        2. Analítica descriptiva  
+        3. KPIs de negocio
+
+        Ejemplo para “Objetivos”:
+        - Comprender las fases del ciclo de vida de los datos.  
+        - Analizar un ejemplo real usando analítica descriptiva.  
+        - Evaluar qué KPI es más relevante según el contexto de negocio.
+
+        Asegúrate de que:
+        - No se repitan conceptos clave entre clases.
+        - Los objetivos estén bien diferenciados.
         """
+        
         markdown = call_gpt(prompt)
     else:
         # Usar el outline proporcionado
@@ -269,7 +314,7 @@ def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=No
     
     # Crear Google Sheets
     sheet = sheets_service.spreadsheets().create(
-        body={"properties": {"title": f"Outline - {nombre}"}},
+        body={"properties": {"title": f"Outline - {nombre_del_curso}"}},
         fields="spreadsheetId"
     ).execute()
     

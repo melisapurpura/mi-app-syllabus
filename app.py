@@ -8,7 +8,7 @@ from utils import (
     generar_outline,
 )
 
-st.set_page_config(page_title="Generador de Cursos", layout="centered")
+st.set_page_config(page_title="Generador de Syllabus", layout="centered")
 st.title("🧠 Generador de Syllabus y Outline")
 st.markdown("Completa los campos del curso para generar automáticamente el syllabus y el outline.")
 
@@ -52,7 +52,7 @@ if st.button("Generar Syllabus y Outline"):
             )
             
             # Paso 6: generar outline CSV usando el mismo outline generado para el syllabus
-            link_outline = generar_outline_csv(nombre, nivel, objetivos_mejorados, publico, siguiente, outline)
+            link_outline = generar_outline_csv(nombre, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline)
             
             # Mostrar ambos enlaces
             st.success("✅ Syllabus y Outline generados correctamente.")
