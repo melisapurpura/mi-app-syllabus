@@ -26,7 +26,7 @@ docs_service = build("docs", "v1", credentials=creds)
 drive_service = build("drive", "v3", credentials=creds)
 sheets_service = build("sheets", "v4", credentials=creds)
 
-TEMPLATE_ID = "1I2jMQi1jmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
+TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
 
 # === Función base para llamar a GPT
 def call_gpt(prompt):
