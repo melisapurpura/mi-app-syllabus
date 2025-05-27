@@ -7,15 +7,13 @@ from openai import OpenAI
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-# === Cargar claves desde secrets ===
+# === Cargar secretos
 openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# Guardar temporalmente el archivo de cuenta de servicio
 with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
     json.dump(json.loads(st.secrets["SERVICE_ACCOUNT_JSON"]), f)
     SERVICE_ACCOUNT_FILE = f.name
 
-# === Autenticación con Google APIs ===
 SCOPES = [
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/drive",
@@ -30,7 +28,9 @@ docs_service = build("docs", "v1", credentials=creds)
 drive_service = build("drive", "v3", credentials=creds)
 sheets_service = build("sheets", "v4", credentials=creds)
 
-# === GPT wrapper ===
+# ID de tu plantilla de syllabus
+TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
+
 def call_gpt(prompt):
     response = openai_client.chat.completions.create(
         model="gpt-4",
@@ -39,7 +39,6 @@ def call_gpt(prompt):
     )
     return response.choices[0].message.content.strip()
 
-# === Generar Syllabus en Google Docs ===
 def generar_syllabus_completo(nombre, nivel, objetivos, publico, siguiente):
     prompt = f"""
 Redacta un syllabus completo para el curso "{nombre}", de nivel {nivel}, orientado a este público:
@@ -56,27 +55,30 @@ Incluye:
 3. Descripción del plan de estudios (3 objetivos secundarios como subtítulos)
 4. Detalles del plan de estudios (lista de clases con títulos y descripciones).
 """
-    contenido = call_gpt(prompt)
+    texto = call_gpt(prompt)
 
-    # Crear documento en Google Docs
-    doc = docs_service.documents().create(body={"title": f"Syllabus - {nombre}"}).execute()
-    doc_id = doc["documentId"]
+    # Duplicar plantilla
+    template_copy = drive_service.files().copy(
+        fileId=TEMPLATE_ID,
+        body={"name": f"Syllabus - {nombre}"}
+    ).execute()
+    document_id = template_copy["id"]
 
+    # Insertar texto en el documento
     docs_service.documents().batchUpdate(
-        documentId=doc_id,
-        body={"requests": [{"insertText": {"location": {"index": 1}, "text": contenido}}]}
+        documentId=document_id,
+        body={"requests": [{"insertText": {"location": {"index": 1}, "text": texto}}]}
     ).execute()
 
-    # Compartir con dominio
+    # Compartir con el dominio
     drive_service.permissions().create(
-        fileId=doc_id,
+        fileId=document_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
         fields="id"
     ).execute()
 
-    return f"https://docs.google.com/document/d/{doc_id}/edit"
+    return f"https://docs.google.com/document/d/{document_id}/edit"
 
-# === Generar Outline en Google Sheets ===
 def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente):
     prompt = f"""
 Crea un temario tipo tabla Markdown para un curso llamado "{nombre}" (nivel {nivel}), con estos objetivos:
@@ -112,6 +114,7 @@ Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos
         body={"values": values}
     ).execute()
 
+    # Compartir con dominio
     drive_service.permissions().create(
         fileId=spreadsheet_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
