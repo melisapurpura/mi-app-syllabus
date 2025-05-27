@@ -9,10 +9,8 @@ from utils import (
 )
 
 st.set_page_config(page_title="Generador de Cursos", layout="centered")
-
 st.title("🧠 Generador de Syllabus y Outline")
-
-st.markdown("Completa los campos del curso y elige qué deseas generar.")
+st.markdown("Completa los campos del curso para generar automáticamente el syllabus y el outline.")
 
 # === Inputs del curso ===
 nombre = st.text_input("Nombre del curso")
@@ -34,35 +32,38 @@ student_persona = (
 # === Botón de acción ===
 if st.button("Generar Syllabus y Outline"):
     with st.spinner("Generando contenido con IA..."):
-        # Paso 1: generar perfil de ingreso
-        perfil_ingreso = generar_perfil_ingreso(nombre, nivel, publico, student_persona, siguiente)
+        try:
+            # Paso 1: generar perfil de ingreso
+            perfil_ingreso = generar_perfil_ingreso(nombre, nivel, publico, student_persona, siguiente)
+            
+            # Paso 2: generar objetivos mejorados
+            objetivos_mejorados = generar_objetivos(nombre, nivel, perfil_ingreso, objetivos_raw)
+            
+            # Paso 3: generar perfil de egreso
+            perfil_egreso = generar_perfil_egreso(nombre, perfil_ingreso, objetivos_mejorados, siguiente)
+            
+            # Paso 4: generar outline
+            outline = generar_outline(nombre, nivel, perfil_ingreso, objetivos_mejorados)
+            
+            # Paso 5: generar syllabus completo
+            link_syllabus = generar_syllabus_completo(
+                nombre, nivel, objetivos_mejorados, publico, siguiente, 
+                perfil_ingreso, perfil_egreso, outline
+            )
+            
+            # Paso 6: generar outline CSV usando el mismo outline generado para el syllabus
+            link_outline = generar_outline_csv(nombre, nivel, objetivos_mejorados, publico, siguiente, outline)
+            
+            # Mostrar ambos enlaces
+            st.success("✅ Syllabus y Outline generados correctamente.")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"[📄 Ver Syllabus en Google Docs]({link_syllabus})", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"[📊 Ver Outline en Google Sheets]({link_outline})", unsafe_allow_html=True)
         
-        # Paso 2: generar objetivos mejorados
-        objetivos_mejorados = generar_objetivos(nombre, nivel, perfil_ingreso, objetivos_raw)
-        
-        # Paso 3: generar perfil de egreso
-        perfil_egreso = generar_perfil_egreso(nombre, perfil_ingreso, objetivos_mejorados, siguiente)
-        
-        # Paso 4: generar outline
-        outline = generar_outline(nombre, nivel, perfil_ingreso, objetivos_mejorados)
-        
-        # Paso 5: generar syllabus completo
-        link_syllabus = generar_syllabus_completo(
-            nombre, nivel, objetivos_mejorados, publico, siguiente, 
-            perfil_ingreso, perfil_egreso, outline
-        )
-        
-        # Paso 6: generar outline CSV usando el mismo outline generado para el syllabus
-        link_outline = generar_outline_csv(nombre, nivel, objetivos_mejorados, publico, siguiente, outline)
-        
-        # Mostrar ambos enlaces
-        st.success("✅ Syllabus y Outline generados correctamente.")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown(f"[📄 Ver Syllabus en Google Docs]({link_syllabus})", unsafe_allow_html=True)
-        with col2:
-            st.markdown(f"[📊 Ver Outline en Google Sheets]({link_outline})", unsafe_allow_html=True)
-
-
-
+        except Exception as e:
+            st.error(f"Ha ocurrido un error durante la generación: {str(e)}")
+            st.info("Verifica que todos los campos estén completos y que la plantilla tenga los placeholders correctos.")
+            st.info("Placeholders necesarios en la plantilla: {{titulo_primer_objetivo_secundario}}, {{descripcion_primer_objetivo_secundario}}, {{titulo_segundo_objetivo_secundario}}, {{descripcion_segundo_objetivo_secundario}}, {{titulo_tercer_objetivo_secundario}}, {{descripcion_tercer_objetivo_secundario}}")

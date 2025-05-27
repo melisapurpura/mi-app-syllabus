@@ -86,7 +86,8 @@ def generar_outline(nombre_del_curso, nivel, perfil_ingreso, objetivos_mejorados
     Incluye columnas: Semana (numero de semana), Clase(nombre de la clase), Conceptos clave (3 conceptos clave por clase), 
     Descripción (descripción de la clase, está descripción la utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
     , Objetivos (objetivos de la clase, estos objetivos los utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
-    Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc."""
+    Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc.
+            ."""
     return call_gpt(prompt)
 
 # === Generar partes del syllabus
@@ -247,14 +248,13 @@ def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=No
         Público objetivo: {publico}
         Curso siguiente: {siguiente}
         
-        
         El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
         Incluye columnas: Semana (numero de semana), Clase(nombre de la clase), Conceptos clave (3 conceptos clave por clase), 
         Descripción (descripción de la clase, está descripción la utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
         , Objetivos (objetivos de la clase, estos objetivos los utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
         Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc.
-    return call_gpt(prompt)
-            """
+            
+        """
         markdown = call_gpt(prompt)
     else:
         # Usar el outline proporcionado
