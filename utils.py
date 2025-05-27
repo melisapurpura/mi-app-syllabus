@@ -26,7 +26,7 @@ docs_service = build("docs", "v1", credentials=creds)
 drive_service = build("drive", "v3", credentials=creds)
 sheets_service = build("sheets", "v4", credentials=creds)
 
-TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
+TEMPLATE_ID = "1I2jMQi1jmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
 
 # === Función base para llamar a GPT
 def call_gpt(prompt):
@@ -39,37 +39,39 @@ def call_gpt(prompt):
 
 # === Funciones de generación individuales
 def generar_perfil_ingreso(nombre_del_curso, nivel, publico, student_persona, siguiente_learning_unit):
-    prompt = f"""Mejora el perfil de ingreso para el curso de {nombre_del_curso}, tomando como base el siguiente perfil de estudiante:
-{student_persona}
-
-Este curso es de nivel {nivel} y está dirigido a:
-{publico}
-
-El siguiente curso sugerido después de este es: {siguiente_learning_unit}
-(No lo menciones directamente)."""
+    prompt = f"""Mejora el perfil de ingreso para el curso de {nombre_del_curso}, tomando como base el siguiente perfil:
+    {student_persona}
+    
+    Este curso es de nivel {nivel} y está dirigido a:
+    {publico}
+    
+    El siguiente curso sugerido después de este es: {siguiente_learning_unit} (No lo menciones directamente).
+    """
     return call_gpt(prompt)
 
 def generar_objetivos(nombre_del_curso, nivel, perfil_ingreso, objetivos_raw):
     prompt = f"""Basándote en los siguientes objetivos iniciales:
-{objetivos_raw}
-
-Redacta los objetivos finales del curso "{nombre_del_curso}" (nivel {nivel}), dirigido a este perfil:
-{perfil_ingreso}
-
-Devuelve un objetivo general y 5 objetivos secundarios en tabla Markdown con columnas: Número, Nombre, Descripción."""
+    {objetivos_raw}
+    
+    Redacta los objetivos finales del curso "{nombre_del_curso}" (nivel {nivel}), dirigido a este perfil:
+    {perfil_ingreso}
+    
+    Devuelve un objetivo general y 5 objetivos secundarios en tabla Markdown con columnas: Número, Nombre, Descripción.
+    """
     return call_gpt(prompt)
 
 def generar_perfil_egreso(nombre_del_curso, perfil_ingreso, objetivos_mejorados, siguiente_learning_unit):
     prompt = f"""Redacta el perfil de egreso para el curso "{nombre_del_curso}", basado en estos objetivos:
-{objetivos_mejorados}
-
-Este curso está dirigido a:
-{perfil_ingreso}
-Y el siguiente paso ideal sería el curso: {siguiente_learning_unit} (no lo menciones directamente).
-
-Incluye:
-- Un párrafo con el perfil de egreso.
-- Una lista de 5 habilidades principales con bullet points."""
+    {objetivos_mejorados}
+    
+    Este curso está dirigido a:
+    {perfil_ingreso}
+    
+    Y el siguiente paso ideal sería el curso: {siguiente_learning_unit} (no lo menciones directamente).
+    
+    Incluye:
+    - Un párrafo con el perfil de egreso.
+    - Una lista de 5 habilidades principales con bullet points."""
     return call_gpt(prompt)
 
 def generar_outline(nombre_del_curso, nivel, perfil_ingreso, objetivos_mejorados):
@@ -81,52 +83,97 @@ def generar_outline(nombre_del_curso, nivel, perfil_ingreso, objetivos_mejorados
     {objetivos_mejorados}
     
     El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
-    Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos.
-    Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas."""
+    Incluye columnas: Semana (numero de semana), Clase(nombre de la clase), Conceptos clave (3 conceptos clave por clase), 
+    Descripción (descripción de la clase, está descripción la utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
+    , Objetivos (objetivos de la clase, estos objetivos los utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
+    Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc."""
     return call_gpt(prompt)
 
 # === Generar partes del syllabus
 def generar_syllabus_partes(perfil_ingreso, perfil_egreso, objetivos_mejorados, outline, nombre_del_curso, anio):
-    prompt = f"""Redacta el contenido del syllabus para el curso "{nombre_del_curso}" del año {anio}. Devuelve solo las secciones solicitadas, separadas claramente con etiquetas.
-
-Incluye las siguientes partes:
-
-1. [GENERALIDADES_DEL_PROGRAMA]
-Parrafo corto que combine la descripción del curso, el objetivo general (en una frase) y el perfil de egreso (en otra frase).
-
-2. [PERFIL_INGRESO]
-Un parrafo corto con el perfil de ingreso.
-
-3. [DESCRIPCION_PLAN_ESTUDIOS]
-Tres párrafos muy breves. Cada uno debe comenzar con el título de un objetivo secundario (sin decir "objetivo") seguido de su descripción.
-
-4. [DETALLES_PLAN_ESTUDIOS]
-Una lista con las clases del curso. Cada clase debe tener título y una breve descripción.
-
-Perfíl de ingreso:
-{perfil_ingreso}
-
-Perfil de egreso:
-{perfil_egreso}
-
-Objetivos:
-{objetivos_mejorados}
-
-Outline:
-{outline}"""
-    respuesta = call_gpt(prompt)
-
+    # Prompt para generar las partes generales
+    prompt_general = f"""Redacta el contenido del syllabus para el curso "{nombre_del_curso}" del año {anio}. Devuelve solo el texto sin formato.
+    
+    Incluye las siguientes partes:
+    
+    1. [GENERALIDADES_DEL_PROGRAMA]
+    Parrafo corto que combine la descripción del curso, el objetivo general (en una frase) y el perfil de egreso (en una frase).
+    
+    2. [PERFIL_INGRESO]
+    Un parrafo corto con el perfil de ingreso.
+    
+    3. [DETALLES_PLAN_ESTUDIOS]
+    Una lista con las clases del curso. Cada clase debe tener título y una breve descripción.
+    
+    Perfil de ingreso:
+    {perfil_ingreso}
+    
+    Perfil de egreso:
+    {perfil_egreso}
+    
+    Objetivos:
+    {objetivos_mejorados}
+    
+    Outline:
+    {outline}"""
+    
+    respuesta_general = call_gpt(prompt_general)
+    
     def extraer_seccion(etiqueta, texto):
-        patron = rf"\[{etiqueta}\]\n(.*?)(?=\n\[|\Z)"
+        patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
         resultado = re.search(patron, texto, re.DOTALL)
         return resultado.group(1).strip() if resultado else ""
-
-    generalidades = extraer_seccion("GENERALIDADES_DEL_PROGRAMA", respuesta)
-    ingreso = extraer_seccion("PERFIL_INGRESO", respuesta)
-    descripcion = extraer_seccion("DESCRIPCION_PLAN_ESTUDIOS", respuesta)
-    detalles = extraer_seccion("DETALLES_PLAN_ESTUDIOS", respuesta)
-
-    return generalidades, ingreso, descripcion, detalles
+    
+    generalidades = extraer_seccion("GENERALIDADES_DEL_PROGRAMA", respuesta_general)
+    ingreso = extraer_seccion("PERFIL_INGRESO", respuesta_general)
+    detalles = extraer_seccion("DETALLES_PLAN_ESTUDIOS", respuesta_general)
+    
+    # Prompt específico para generar los objetivos secundarios en el formato requerido
+    prompt_objetivos = f"""Extrae los 3 objetivos secundarios más importantes de la siguiente tabla de objetivos:
+    {objetivos_mejorados}
+    
+    Para cada uno, proporciona:
+    1. [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
+    El título del primer objetivo secundario (solo el título, sin número ni descripción).
+    
+    2. [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
+    Una descripción muy breve del primer objetivo secundario (máximo 2 líneas).
+    
+    3. [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
+    El título del segundo objetivo secundario (solo el título, sin número ni descripción).
+    
+    4. [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
+    Una descripción muy breve del segundo objetivo secundario (máximo 2 líneas).
+    
+    5. [TITULO_TERCER_OBJETIVO_SECUNDARIO]
+    El título del tercer objetivo secundario (solo el título, sin número ni descripción).
+    
+    6. [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
+    Una descripción muy breve del tercer objetivo secundario (máximo 2 líneas).
+    
+    Las descripciones deben ser concisas y no repetir el contenido de las generalidades del programa.
+    """
+    
+    respuesta_objetivos = call_gpt(prompt_objetivos)
+    
+    titulo_primer_objetivo = extraer_seccion("TITULO_PRIMER_OBJETIVO_SECUNDARIO", respuesta_objetivos)
+    descripcion_primer_objetivo = extraer_seccion("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO", respuesta_objetivos)
+    titulo_segundo_objetivo = extraer_seccion("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO", respuesta_objetivos)
+    descripcion_segundo_objetivo = extraer_seccion("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO", respuesta_objetivos)
+    titulo_tercer_objetivo = extraer_seccion("TITULO_TERCER_OBJETIVO_SECUNDARIO", respuesta_objetivos)
+    descripcion_tercer_objetivo = extraer_seccion("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO", respuesta_objetivos)
+    
+    return (
+        generalidades, 
+        ingreso, 
+        titulo_primer_objetivo,
+        descripcion_primer_objetivo,
+        titulo_segundo_objetivo,
+        descripcion_segundo_objetivo,
+        titulo_tercer_objetivo,
+        descripcion_tercer_objetivo,
+        detalles
+    )
 
 # === Reemplazo de placeholders en plantilla
 def replace_placeholder(document_id, placeholder, new_text):
@@ -144,30 +191,49 @@ def replace_placeholder(document_id, placeholder, new_text):
 # === Ensamblar y generar syllabus completo con plantilla
 def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publico, siguiente, perfil_ingreso, perfil_egreso, outline):
     anio = 2025
-
-    generalidades, ingreso, descripcion, detalles = generar_syllabus_partes(
+    
+    (
+        generalidades, 
+        ingreso, 
+        titulo_primer_objetivo,
+        descripcion_primer_objetivo,
+        titulo_segundo_objetivo,
+        descripcion_segundo_objetivo,
+        titulo_tercer_objetivo,
+        descripcion_tercer_objetivo,
+        detalles
+    ) = generar_syllabus_partes(
         perfil_ingreso, perfil_egreso, objetivos_mejorados, outline, nombre_del_curso, anio
     )
-
+    
     template_copy = drive_service.files().copy(
         fileId=TEMPLATE_ID,
         body={"name": f"Syllabus - {nombre_del_curso}"}
     ).execute()
+    
     document_id = template_copy["id"]
-
+    
     replace_placeholder(document_id, "{{nombre_del_curso}}", nombre_del_curso)
     replace_placeholder(document_id, "{{anio}}", str(anio))
     replace_placeholder(document_id, "{{generalidades_del_programa}}", generalidades)
     replace_placeholder(document_id, "{{perfil_ingreso}}", ingreso)
-    replace_placeholder(document_id, "{{descripcion_plan_estudios}}", descripcion)
+    
+    # Reemplazar los placeholders de los objetivos secundarios
+    replace_placeholder(document_id, "{{titulo_primer_objetivo_secundario}}", titulo_primer_objetivo)
+    replace_placeholder(document_id, "{{descripcion_primer_objetivo_secundario}}", descripcion_primer_objetivo)
+    replace_placeholder(document_id, "{{titulo_segundo_objetivo_secundario}}", titulo_segundo_objetivo)
+    replace_placeholder(document_id, "{{descripcion_segundo_objetivo_secundario}}", descripcion_segundo_objetivo)
+    replace_placeholder(document_id, "{{titulo_tercer_objetivo_secundario}}", titulo_tercer_objetivo)
+    replace_placeholder(document_id, "{{descripcion_tercer_objetivo_secundario}}", descripcion_tercer_objetivo)
+    
     replace_placeholder(document_id, "{{detalles_plan_estudios}}", detalles)
-
+    
     drive_service.permissions().create(
         fileId=document_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
         fields="id"
     ).execute()
-
+    
     return f"https://docs.google.com/document/d/{document_id}/edit"
 
 # Modificada para aceptar el outline como parámetro
@@ -181,10 +247,14 @@ def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=No
         Público objetivo: {publico}
         Curso siguiente: {siguiente}
         
+        
         El curso debe tener exactamente 3 semanas, con 4 clases por semana (total 12 clases).
-        Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos.
-        Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas.
-        """
+        Incluye columnas: Semana (numero de semana), Clase(nombre de la clase), Conceptos clave (3 conceptos clave por clase), 
+        Descripción (descripción de la clase, está descripción la utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
+        , Objetivos (objetivos de la clase, estos objetivos los utilizazará un llma en un paso siguiente para crear la clase desde 0, redactala con las mejores practicas para que se genere una gran clase en un siguiente paso)
+        Asegúrate de numerar las clases del 1 al 12 y distribuirlas equitativamente en las 3 semanas. Cada clase debe tener un nombre diferente, no quiero que ninguna clase tenga parte uno, aprte dos, etc.
+    return call_gpt(prompt)
+            """
         markdown = call_gpt(prompt)
     else:
         # Usar el outline proporcionado
