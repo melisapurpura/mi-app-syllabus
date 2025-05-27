@@ -155,10 +155,10 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
 
     replace_placeholder(document_id, "{{nombre_del_curso}}", nombre_del_curso)
     replace_placeholder(document_id, "{{anio}}", str(anio))
-    replace_placeholder(document_id, "{{generalidades}}", generalidades)
+    replace_placeholder(document_id, "{{generalidades_del_programa}}", generalidades)
     replace_placeholder(document_id, "{{perfil_ingreso}}", ingreso)
-    replace_placeholder(document_id, "{{descripcion}}", descripcion)
-    replace_placeholder(document_id, "{{detalles}}", detalles)
+    replace_placeholder(document_id, "{{descripcion_plan_estudios}}", descripcion)
+    replace_placeholder(document_id, "{{detalles_plan_estudios}}", detalles)
 
     drive_service.permissions().create(
         fileId=document_id,
