@@ -167,3 +167,47 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
     ).execute()
 
     return f"https://docs.google.com/document/d/{document_id}/edit"
+
+def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente):
+    prompt = f"""
+Crea un temario tipo tabla Markdown para un curso llamado "{nombre}" (nivel {nivel}), con estos objetivos:
+{objetivos}
+
+Público objetivo: {publico}
+Curso siguiente: {siguiente}
+
+Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos
+"""
+    markdown = call_gpt(prompt)
+
+    # Convertir Markdown a DataFrame
+    lines = [line.strip() for line in markdown.splitlines() if "|" in line and not line.startswith("|---")]
+    clean = "\n".join(lines)
+    df = pd.read_csv(io.StringIO(clean), sep="|", engine="python", skipinitialspace=True)
+    df = df.dropna(axis=1, how="all")
+    df.columns = [col.strip() for col in df.columns]
+
+    # Crear Google Sheets
+    sheet = sheets_service.spreadsheets().create(
+        body={"properties": {"title": f"Outline - {nombre}"}},
+        fields="spreadsheetId"
+    ).execute()
+
+    spreadsheet_id = sheet["spreadsheetId"]
+    values = [df.columns.tolist()] + df.values.tolist()
+
+    sheets_service.spreadsheets().values().update(
+        spreadsheetId=spreadsheet_id,
+        range="A1",
+        valueInputOption="RAW",
+        body={"values": values}
+    ).execute()
+
+    # Compartir con dominio
+    drive_service.permissions().create(
+        fileId=spreadsheet_id,
+        body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
+        fields="id"
+    ).execute()
+
+    return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
