@@ -66,34 +66,3 @@ if st.button("Generar Syllabus y Outline"):
 
 
 
-"""# === Selección de tipo de output ===
-opcion = st.radio("¿Qué deseas generar?", ["Syllabus", "Outline"])
-
-# === Botón de acción ===
-if st.button("Generar"):
-    with st.spinner("Generando contenido con IA..."):
-
-        # Paso 1: generar perfil de ingreso
-        perfil_ingreso = generar_perfil_ingreso(nombre, nivel, publico, student_persona, siguiente)
-
-        # Paso 2: generar objetivos mejorados
-        objetivos_mejorados = generar_objetivos(nombre, nivel, perfil_ingreso, objetivos_raw)
-
-        # Paso 3: generar perfil de egreso
-        perfil_egreso = generar_perfil_egreso(nombre, perfil_ingreso, objetivos_mejorados, siguiente)
-
-        # Paso 4: generar outline
-        outline = generar_outline(nombre, nivel, perfil_ingreso, objetivos_mejorados)
-
-        # Paso 5: según output
-        if opcion == "Syllabus":
-            link = generar_syllabus_completo(
-                nombre, nivel, objetivos_mejorados, publico, siguiente,
-                perfil_ingreso, perfil_egreso, outline
-            )
-            st.success("✅ Syllabus generado.")
-            st.markdown(f"[📄 Ver Google Docs]({link})", unsafe_allow_html=True)
-        else:
-            link = generar_outline_csv(nombre, nivel, objetivos_mejorados, publico, siguiente)
-            st.success("✅ Outline generado.")
-            st.markdown(f"[📊 Ver Google Sheets]({link})", unsafe_allow_html=True)"""
