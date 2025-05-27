@@ -228,7 +228,15 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
     replace_placeholder(document_id, "{{descripcion_tercer_objetivo_secundario}}", descripcion_tercer_objetivo)
     
     replace_placeholder(document_id, "{{detalles_plan_estudios}}", detalles)
-    
+
+    # Primero, dar permisos de propietario al usuario
+    drive_service.permissions().create(
+            fileId=document_id,
+            body={"type": "user", "role": "owner", "emailAddress": "melisa@datarebels.mx", "transferOwnership": True},
+            fields="id"
+        ).execute()
+        
+    # Luego, dar permisos de escritura al dominio
     drive_service.permissions().create(
         fileId=document_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
@@ -331,6 +339,13 @@ def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=No
         body={"requests": requests}
     ).execute()
     
+    # Dar permisos de propietario al usuario
+    drive_service.permissions().create(
+        fileId=spreadsheet_id,
+        body={"type": "user", "role": "owner", "emailAddress": "melisa@datarebels.mx", "transferOwnership": True},
+        fields="id"
+    ).execute()
+
     # Compartir
     drive_service.permissions().create(
         fileId=spreadsheet_id,
