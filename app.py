@@ -31,7 +31,42 @@ student_persona = (
     "- Tiene poco tiempo y necesita soluciones prácticas que le ayuden a avanzar ya."
 )
 
-# === Selección de tipo de output ===
+# === Botón de acción ===
+if st.button("Generar Syllabus y Outline"):
+    with st.spinner("Generando contenido con IA..."):
+        # Paso 1: generar perfil de ingreso
+        perfil_ingreso = generar_perfil_ingreso(nombre, nivel, publico, student_persona, siguiente)
+        
+        # Paso 2: generar objetivos mejorados
+        objetivos_mejorados = generar_objetivos(nombre, nivel, perfil_ingreso, objetivos_raw)
+        
+        # Paso 3: generar perfil de egreso
+        perfil_egreso = generar_perfil_egreso(nombre, perfil_ingreso, objetivos_mejorados, siguiente)
+        
+        # Paso 4: generar outline
+        outline = generar_outline(nombre, nivel, perfil_ingreso, objetivos_mejorados)
+        
+        # Paso 5: generar syllabus completo
+        link_syllabus = generar_syllabus_completo(
+            nombre, nivel, objetivos_mejorados, publico, siguiente, 
+            perfil_ingreso, perfil_egreso, outline
+        )
+        
+        # Paso 6: generar outline CSV usando el mismo outline generado para el syllabus
+        link_outline = generar_outline_csv(nombre, nivel, objetivos_mejorados, publico, siguiente, outline)
+        
+        # Mostrar ambos enlaces
+        st.success("✅ Syllabus y Outline generados correctamente.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"[📄 Ver Syllabus en Google Docs]({link_syllabus})", unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"[📊 Ver Outline en Google Sheets]({link_outline})", unsafe_allow_html=True)
+
+
+
+"""# === Selección de tipo de output ===
 opcion = st.radio("¿Qué deseas generar?", ["Syllabus", "Outline"])
 
 # === Botón de acción ===
@@ -61,4 +96,4 @@ if st.button("Generar"):
         else:
             link = generar_outline_csv(nombre, nivel, objetivos_mejorados, publico, siguiente)
             st.success("✅ Outline generado.")
-            st.markdown(f"[📊 Ver Google Sheets]({link})", unsafe_allow_html=True)
+            st.markdown(f"[📊 Ver Google Sheets]({link})", unsafe_allow_html=True)"""

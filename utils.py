@@ -168,18 +168,24 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
 
     return f"https://docs.google.com/document/d/{document_id}/edit"
 
-def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente):
-    prompt = f"""
-Crea un temario tipo tabla Markdown para un curso llamado "{nombre}" (nivel {nivel}), con estos objetivos:
-{objetivos}
-
-Público objetivo: {publico}
-Curso siguiente: {siguiente}
-
-Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos
-"""
-    markdown = call_gpt(prompt)
-
+# Modificada para aceptar el outline como parámetro
+def generar_outline_csv(nombre, nivel, objetivos, publico, siguiente, outline=None):
+    # Si no se proporciona un outline, generarlo
+    if outline is None:
+        prompt = f"""
+        Crea un temario tipo tabla Markdown para un curso llamado "{nombre}" (nivel {nivel}), con estos objetivos:
+        {objetivos}
+        
+        Público objetivo: {publico}
+        Curso siguiente: {siguiente}
+        
+        Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos
+        """
+        markdown = call_gpt(prompt)
+    else:
+        # Usar el outline proporcionado
+        markdown = outline
+        
     # Convertir Markdown a DataFrame
     lines = [line.strip() for line in markdown.splitlines() if "|" in line and not line.startswith("|---")]
     clean = "\n".join(lines)
@@ -192,22 +198,72 @@ Incluye columnas: Semana, Clase, Conceptos clave, Descripción, Objetivos
         body={"properties": {"title": f"Outline - {nombre}"}},
         fields="spreadsheetId"
     ).execute()
-
+    
     spreadsheet_id = sheet["spreadsheetId"]
-    values = [df.columns.tolist()] + df.values.tolist()
-
+    
+    # Preparar datos para la API
+    values = [df.columns.tolist()]
+    values.extend(df.values.tolist())
+    
+    # Actualizar hoja
     sheets_service.spreadsheets().values().update(
         spreadsheetId=spreadsheet_id,
         range="A1",
         valueInputOption="RAW",
         body={"values": values}
     ).execute()
-
-    # Compartir con dominio
+    
+    # Dar formato
+    requests = [
+        {
+            "updateSheetProperties": {
+                "properties": {
+                    "gridProperties": {
+                        "frozenRowCount": 1
+                    }
+                },
+                "fields": "gridProperties.frozenRowCount"
+            }
+        },
+        {
+            "repeatCell": {
+                "range": {
+                    "startRowIndex": 0,
+                    "endRowIndex": 1
+                },
+                "cell": {
+                    "userEnteredFormat": {
+                        "backgroundColor": {
+                            "red": 0.2,
+                            "green": 0.2,
+                            "blue": 0.2
+                        },
+                        "textFormat": {
+                            "foregroundColor": {
+                                "red": 1.0,
+                                "green": 1.0,
+                                "blue": 1.0
+                            },
+                            "bold": True
+                        }
+                    }
+                },
+                "fields": "userEnteredFormat(backgroundColor,textFormat)"
+            }
+        }
+    ]
+    
+    sheets_service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={"requests": requests}
+    ).execute()
+    
+    # Compartir
     drive_service.permissions().create(
         fileId=spreadsheet_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
         fields="id"
     ).execute()
-
+    
     return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
+
