@@ -33,13 +33,20 @@ TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
 
 # === Función base de GPT con modelo optimizado y token limitado ===
 def call_gpt(prompt, max_tokens=1000):
+    import time
+    start = time.time()
     response = openai_client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7,
         max_tokens=max_tokens
     )
+    end = time.time()
+    usage = response.usage
+    print(f"📊 TOKENS | prompt: {usage.prompt_tokens}, completion: {usage.completion_tokens}, total: {usage.total_tokens}")
+    print(f"⏱️ Duración: {end - start:.2f} segundos")
     return response.choices[0].message.content.strip()
+
 
 # === Función optimizada que genera todo en una sola llamada ===
 @st.cache_data(show_spinner=False)
@@ -53,8 +60,12 @@ Devuélveme:
 [OBJETIVOS]
 [PERFIL_EGRESO]
 [OUTLINE]
+El outline debe tener 12 clases (4 por semana por 3 semanas), sin títulos repetidos ni numeraciones. 
+Cada clase debe venir en una tabla Markdown con las siguientes columnas exactamente:
 
-El outline debe tener 12 clases (4 por semana por 3 semanas), sin títulos repetidos ni numeraciones, con 3 conceptos clave únicos por clase, descripción clara y 3 objetivos distintos por clase.
+| Semana | Clase | Título | Descripción | Conceptos clave | Objetivos |
+
+
 """
     respuesta = call_gpt(prompt, max_tokens=1000)
 
