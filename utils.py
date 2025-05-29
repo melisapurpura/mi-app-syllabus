@@ -10,7 +10,7 @@ from googleapiclient.discovery import build
 from functools import lru_cache
 
 # === Configuración inicial optimizada ===
-# Usamos el modelo más eficiente en costo: gpt-3.5-turbo
+# Creamos cliente OpenAI moderno
 openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Preparamos credenciales para Google APIs
@@ -168,3 +168,56 @@ Elige los 3 más importantes y devuelve:
     ).execute()
 
     return f"https://docs.google.com/document/d/{document_id}/edit"
+
+# === Crear y exportar Outline a Google Sheets ===
+def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline):
+    # Convertimos el outline Markdown a DataFrame (solo líneas con '|')
+    lines = [line.strip() for line in outline.splitlines() if "|" in line and not line.startswith("|---")]
+    df = pd.read_csv(io.StringIO("\n".join(lines)), sep="|", engine="python", skipinitialspace=True)
+    df = df.dropna(axis=1, how="all")
+    df.columns = [col.strip() for col in df.columns]
+
+    # Crear hoja de cálculo y poblarla
+    sheet = sheets_service.spreadsheets().create(
+        body={"properties": {"title": f"Outline - {nombre_del_curso}"}},
+        fields="spreadsheetId"
+    ).execute()
+    spreadsheet_id = sheet["spreadsheetId"]
+
+    # Insertar los datos
+    values = [df.columns.tolist()] + df.values.tolist()
+    sheets_service.spreadsheets().values().update(
+        spreadsheetId=spreadsheet_id,
+        range="A1",
+        valueInputOption="RAW",
+        body={"values": values}
+    ).execute()
+
+    # Aplicar formato (cabecera congelada y color gris)
+    requests = [
+        {"updateSheetProperties": {
+            "properties": {"gridProperties": {"frozenRowCount": 1}},
+            "fields": "gridProperties.frozenRowCount"
+        }},
+        {"repeatCell": {
+            "range": {"startRowIndex": 0, "endRowIndex": 1},
+            "cell": {"userEnteredFormat": {
+                "backgroundColor": {"red": 0.2, "green": 0.2, "blue": 0.2},
+                "textFormat": {"foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}, "bold": True}
+            }},
+            "fields": "userEnteredFormat(backgroundColor,textFormat)"
+        }}
+    ]
+    sheets_service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={"requests": requests}
+    ).execute()
+
+    # Compartir archivo con dominio autorizado
+    drive_service.permissions().create(
+        fileId=spreadsheet_id,
+        body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
+        fields="id"
+    ).execute()
+
+    return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
