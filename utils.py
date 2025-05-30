@@ -4,14 +4,28 @@ import tempfile
 import pandas as pd
 import io
 import re
-from openai import OpenAI
+#from openai import OpenAI
+
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from functools import lru_cache
 
+from vertexai.language_models import ChatModel
+import vertexai
+
 # === Configuración inicial optimizada ===
 # Creamos cliente OpenAI moderno
-openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+#openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+@st.cache_resource
+def get_chat_model():
+    vertexai.init(project=st.secrets["GCP_PROJECT_ID"], location="us-central1")
+    chat_model = ChatModel.from_pretrained("gemini-1.5-flash-001")  # También puedes usar "gemini-pro"
+    return chat_model.start_chat()
+
+def call_gemini(prompt: str) -> str:
+    chat = get_chat_model()
+    response = chat.send_message(prompt)
+    return response.text.strip()
 
 # Preparamos credenciales para Google APIs
 with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
@@ -32,7 +46,7 @@ sheets_service = build("sheets", "v4", credentials=creds)
 TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
 
 # === Función base de GPT con modelo optimizado y token limitado ===
-def call_gpt(prompt, max_tokens=1000):
+"""def call_gpt(prompt, max_tokens=1000):
     import time
     start = time.time()
     response = openai_client.chat.completions.create(
@@ -45,7 +59,7 @@ def call_gpt(prompt, max_tokens=1000):
     usage = response.usage
     print(f"📊 TOKENS | prompt: {usage.prompt_tokens}, completion: {usage.completion_tokens}, total: {usage.total_tokens}")
     print(f"⏱️ Duración: {end - start:.2f} segundos")
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message.content.strip()"""
 
 
 # === Función optimizada que genera todo en una sola llamada ===
@@ -67,7 +81,7 @@ Cada clase debe venir en una tabla Markdown con las siguientes columnas exactame
 
 
 """
-    respuesta = call_gpt(prompt, max_tokens=1000)
+    respuesta = call_gemini(prompt, max_tokens=1000)
 
     def extraer(etiqueta):
         patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
@@ -117,7 +131,7 @@ Objetivos: {objetivos_mejorados}
 Outline:
 {outline}
 """
-    secciones = call_gpt(prompt, max_tokens=1200)
+    secciones = call_gemini(prompt, max_tokens=1200)
 
     def extraer(etiqueta):
         patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
@@ -140,7 +154,7 @@ Elige los 3 más importantes y devuelve:
 [TITULO_TERCER_OBJETIVO_SECUNDARIO]
 [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
 """
-    objetivos_res = call_gpt(prompt_obj, max_tokens=600)
+    objetivos_res = call_gemini(prompt_obj, max_tokens=600)
 
     def extraer_obj(etiqueta):
         patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"

@@ -1,7 +1,7 @@
 streamlit
-openai
 pandas
 google-api-python-client
 google-auth
 google-auth-oauthlib
 google-api-python-client
+google-cloud-aiplatform
