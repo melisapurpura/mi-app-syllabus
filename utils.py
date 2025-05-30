@@ -81,7 +81,7 @@ Cada clase debe venir en una tabla Markdown con las siguientes columnas exactame
 
 
 """
-    respuesta = call_gemini(prompt, max_tokens=1000)
+    respuesta = call_gemini(prompt)
 
     def extraer(etiqueta):
         patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
@@ -131,7 +131,7 @@ Objetivos: {objetivos_mejorados}
 Outline:
 {outline}
 """
-    secciones = call_gemini(prompt, max_tokens=1200)
+    secciones = call_gemini(prompt)
 
     def extraer(etiqueta):
         patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
@@ -154,7 +154,7 @@ Elige los 3 más importantes y devuelve:
 [TITULO_TERCER_OBJETIVO_SECUNDARIO]
 [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
 """
-    objetivos_res = call_gemini(prompt_obj, max_tokens=600)
+    objetivos_res = call_gemini(prompt_obj)
 
     def extraer_obj(etiqueta):
         patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
