@@ -111,7 +111,7 @@ def replace_placeholder(document_id, placeholder, new_text):
 def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publico, siguiente, perfil_ingreso, perfil_egreso, outline):
     anio = 2025
 
-    # Función auxiliar para pedir una sola sección a Gemini
+  # Función auxiliar para secciones sueltas
     def pedir_seccion(etiqueta, instruccion):
         prompt = f"""
             Curso: {nombre_del_curso}
@@ -129,65 +129,80 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
         respuesta = call_gemini(prompt)
         return respuesta.strip()
 
-    # Pedir cada parte importante del syllabus por separado
+    # Función auxiliar específica para los objetivos secundarios
+    def pedir_objetivos_secundarios(objetivos_mejorados):
+        prompt = f"""
+            De los siguientes objetivos del curso:
+
+            {objetivos_mejorados}
+
+            Selecciona los 3 objetivos secundarios más importantes.
+
+            Devuélvelos de manera corta y consisa usando el siguiente formato exacto:
+
+            [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
+            ...
+
+            [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
+            ...
+
+            [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
+            ...
+
+            [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
+            ...
+
+            [TITULO_TERCER_OBJETIVO_SECUNDARIO]
+            ...
+
+            [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
+            ...
+            """
+        respuesta = call_gemini(prompt)
+
+        def extraer(etiqueta):
+            patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
+            r = re.search(patron, respuesta, re.DOTALL)
+            return r.group(1).strip() if r else ""
+
+        return {
+            "titulo1": extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO"),
+            "desc1": extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO"),
+            "titulo2": extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO"),
+            "desc2": extraer("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO"),
+            "titulo3": extraer("TITULO_TERCER_OBJETIVO_SECUNDARIO"),
+            "desc3": extraer("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO"),
+        }
+
+    # Generar cada sección por separado
     generalidades = pedir_seccion("GENERALIDADES_DEL_PROGRAMA", "Redacta un párrafo breve que combine descripción general del curso, su objetivo y el perfil de egreso.")
     ingreso = pedir_seccion("PERFIL_INGRESO", "Redacta un párrafo claro y directo del perfil de ingreso del estudiante.")
     detalles = pedir_seccion("DETALLES_PLAN_ESTUDIOS", "Escribe la lista de 12 clases, cada una con título y una breve descripción.")
 
-    # Prompt para extraer los objetivos secundarios clave
-    prompt_obj = f"""
-            De los siguientes objetivos:
-            {objetivos_mejorados}
+    objetivos = pedir_objetivos_secundarios(objetivos_mejorados)
 
-            Selecciona los 3 objetivos secundarios más importantes y genera:
-
-            [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
-            ...
-            [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
-            ...
-            [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
-            ...
-            [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
-            ...
-            [TITULO_TERCER_OBJETIVO_SECUNDARIO]
-            ...
-            [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
-            ..."""
-    objetivos_res = call_gemini(prompt_obj)
-
-    def extraer(etiqueta, texto=objetivos_res):
-        patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
-        r = re.search(patron, texto, re.DOTALL)
-        return r.group(1).strip() if r else ""
-
-    titulo1 = extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO")
-    desc1 = extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO")
-    titulo2 = extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO")
-    desc2 = extraer("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO")
-    titulo3 = extraer("TITULO_TERCER_OBJETIVO_SECUNDARIO")
-    desc3 = extraer("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO")
-
-    # Crear documento desde plantilla
+    # Copiar plantilla en Drive
     template_copy = drive_service.files().copy(
         fileId=TEMPLATE_ID,
         body={"name": f"Syllabus - {nombre_del_curso}"}
     ).execute()
     document_id = template_copy["id"]
 
-    # Reemplazar los placeholders de la plantilla
+    # Reemplazar placeholders
     replace_placeholder(document_id, "{{nombre_del_curso}}", nombre_del_curso)
     replace_placeholder(document_id, "{{anio}}", str(anio))
     replace_placeholder(document_id, "{{generalidades_del_programa}}", generalidades)
     replace_placeholder(document_id, "{{perfil_ingreso}}", ingreso)
-    replace_placeholder(document_id, "{{titulo_primer_objetivo_secundario}}", titulo1)
-    replace_placeholder(document_id, "{{descripcion_primer_objetivo_secundario}}", desc1)
-    replace_placeholder(document_id, "{{titulo_segundo_objetivo_secundario}}", titulo2)
-    replace_placeholder(document_id, "{{descripcion_segundo_objetivo_secundario}}", desc2)
-    replace_placeholder(document_id, "{{titulo_tercer_objetivo_secundario}}", titulo3)
-    replace_placeholder(document_id, "{{descripcion_tercer_objetivo_secundario}}", desc3)
     replace_placeholder(document_id, "{{detalles_plan_estudios}}", detalles)
 
-    # Compartir el archivo con dominio autorizado
+    replace_placeholder(document_id, "{{titulo_primer_objetivo_secundario}}", objetivos["titulo1"])
+    replace_placeholder(document_id, "{{descripcion_primer_objetivo_secundario}}", objetivos["desc1"])
+    replace_placeholder(document_id, "{{titulo_segundo_objetivo_secundario}}", objetivos["titulo2"])
+    replace_placeholder(document_id, "{{descripcion_segundo_objetivo_secundario}}", objetivos["desc2"])
+    replace_placeholder(document_id, "{{titulo_tercer_objetivo_secundario}}", objetivos["titulo3"])
+    replace_placeholder(document_id, "{{descripcion_tercer_objetivo_secundario}}", objetivos["desc3"])
+
+    # Compartir documento con tu dominio
     drive_service.permissions().create(
         fileId=document_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
