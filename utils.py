@@ -4,47 +4,13 @@ import tempfile
 import pandas as pd
 import io
 import re
-#from openai import OpenAI
+import requests
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from functools import lru_cache
 
-import vertexai
-from vertexai.language_models import ChatModel
-from google.auth import load_credentials_from_file
-
-
-# === Configuración inicial optimizada ===
-# Creamos cliente OpenAI moderno
-#openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-@st.cache_resource
-def get_chat_model():
-    # Guardar temporalmente el archivo JSON desde secrets
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
-        json.dump(json.loads(st.secrets["SERVICE_ACCOUNT_JSON"]), f)
-        service_account_file = f.name
-
-    # Cargar credenciales directamente desde el archivo
-    credentials, _ = load_credentials_from_file(service_account_file)
-
-    # Inicializar Vertex AI con esas credenciales
-    vertexai.init(
-        project=st.secrets["GCP_PROJECT_ID"],
-        location="us-central1",
-        credentials=credentials
-    )
-
-    # Iniciar chat con Gemini Flash
-    chat_model = ChatModel.from_pretrained("gemini-1.5-flash-001")
-    return chat_model.start_chat()
-
-def call_gemini(prompt: str) -> str:
-    chat = get_chat_model()
-    response = chat.send_message(prompt)
-    return response.text.strip()
-
-# Preparamos credenciales para Google APIs
+# === Autenticación para APIs de Google Docs, Sheets y Drive ===
 with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
     json.dump(json.loads(st.secrets["SERVICE_ACCOUNT_JSON"]), f)
     SERVICE_ACCOUNT_FILE = f.name
@@ -62,42 +28,53 @@ sheets_service = build("sheets", "v4", credentials=creds)
 
 TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
 
-# === Función base de GPT con modelo optimizado y token limitado ===
-"""def call_gpt(prompt, max_tokens=1000):
-    import time
-    start = time.time()
-    response = openai_client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
-        max_tokens=max_tokens
-    )
-    end = time.time()
-    usage = response.usage
-    print(f"📊 TOKENS | prompt: {usage.prompt_tokens}, completion: {usage.completion_tokens}, total: {usage.total_tokens}")
-    print(f"⏱️ Duración: {end - start:.2f} segundos")
-    return response.choices[0].message.content.strip()"""
+# === NUEVO: Función para llamar a Gemini con API Key ===
+def call_gemini(prompt: str) -> str:
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+    headers = {"Content-Type": "application/json"}
+    params = {"key": st.secrets["GEMINI_API_KEY"]}
+    data = {
+        "contents": [
+            {
+                "parts": [{"text": prompt}]
+            }
+        ]
+    }
 
+    response = requests.post(url, headers=headers, params=params, json=data)
+    if response.status_code == 200:
+        return response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    else:
+        st.error(f"Error en API Gemini: {response.status_code} - {response.text}")
+        raise Exception("Fallo la llamada a Gemini con API Key.")
 
-# === Función optimizada que genera todo en una sola llamada ===
+# === Generación completa de datos instruccionales ===
 @st.cache_data(show_spinner=False)
 def generar_datos_generales(nombre_del_curso, nivel, publico, student_persona, siguiente, objetivos_raw):
     prompt = f"""
-Diseña un curso con base en:
-Curso: {nombre_del_curso}. Nivel: {nivel}. Público: {publico}. Perfil: {student_persona}. Objetivos: {objetivos_raw}. Curso sugerido posterior: {siguiente} (no lo menciones).
+Actúa como experto en diseño instruccional.
 
-Devuélveme:
+Con base en los siguientes datos:
+- Curso: {nombre_del_curso}
+- Nivel: {nivel}
+- Público objetivo: {publico}
+- Perfil base del estudiante: {student_persona}
+- Objetivos iniciales: {objetivos_raw}
+- Curso sugerido posterior: {siguiente} (no lo menciones directamente)
+
+Devuélveme lo siguiente, separado por etiquetas:
+
 [PERFIL_INGRESO]
+...
 [OBJETIVOS]
+...
 [PERFIL_EGRESO]
+...
 [OUTLINE]
-El outline debe tener 12 clases (4 por semana por 3 semanas), sin títulos repetidos ni numeraciones. 
-Cada clase debe venir en una tabla Markdown con las siguientes columnas exactamente:
+...
 
-| Semana | Clase | Título | Descripción | Conceptos clave | Objetivos |
-
-
-"""
+El outline debe incluir exactamente 12 clases (4 por semana durante 3 semanas), sin títulos repetidos, sin 'parte 1 / parte 2', con conceptos clave únicos (3 por clase, numerados), descripción clara y 3 objetivos distintos por clase.
+    """
     respuesta = call_gemini(prompt)
 
     def extraer(etiqueta):
@@ -112,47 +89,42 @@ Cada clase debe venir en una tabla Markdown con las siguientes columnas exactame
 
     return perfil_ingreso, objetivos, perfil_egreso, outline
 
-# === Reemplazo de placeholders en plantilla de syllabus ===
 def replace_placeholder(document_id, placeholder, new_text):
     requests = [{
         "replaceAllText": {
-            "containsText": {
-                "text": placeholder,
-                "matchCase": True
-            },
+            "containsText": {"text": placeholder, "matchCase": True},
             "replaceText": new_text
         }
     }]
     docs_service.documents().batchUpdate(documentId=document_id, body={"requests": requests}).execute()
 
-# === Ensamblar y generar syllabus completo con plantilla ===
 def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publico, siguiente, perfil_ingreso, perfil_egreso, outline):
     anio = 2025
 
     prompt = f"""
-Para el curso "{nombre_del_curso}" ({anio}), genera:
+Genera el contenido del syllabus para el curso "{nombre_del_curso}" del año {anio}.
 
 [GENERALIDADES_DEL_PROGRAMA]
-Parrafo que combine descripción del curso, objetivo general y perfil de egreso.
+Parrafo breve que combine descripción del curso, objetivo general y perfil de egreso (en una frase).
 
 [PERFIL_INGRESO]
 Parrafo del perfil de ingreso.
 
 [DETALLES_PLAN_ESTUDIOS]
-Lista de 12 clases con título y descripción breve.
+Lista con título y descripción corta de cada una de las 12 clases.
 
-Datos base:
-Ingreso: {perfil_ingreso}
-Egreso: {perfil_egreso}
+Datos:
+Perfil ingreso: {perfil_ingreso}
+Perfil egreso: {perfil_egreso}
 Objetivos: {objetivos_mejorados}
 Outline:
 {outline}
-"""
+    """
     secciones = call_gemini(prompt)
 
-    def extraer(etiqueta):
+    def extraer(etiqueta, texto=secciones):
         patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
-        r = re.search(patron, secciones, re.DOTALL)
+        r = re.search(patron, texto, re.DOTALL)
         return r.group(1).strip() if r else ""
 
     generalidades = extraer("GENERALIDADES_DEL_PROGRAMA")
@@ -160,30 +132,31 @@ Outline:
     detalles = extraer("DETALLES_PLAN_ESTUDIOS")
 
     prompt_obj = f"""
-De los objetivos:
+De los siguientes objetivos:
 {objetivos_mejorados}
 
-Elige los 3 más importantes y devuelve:
+Selecciona los 3 objetivos secundarios más importantes y genera:
+
 [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
+...
 [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
+...
 [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
+...
 [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
+...
 [TITULO_TERCER_OBJETIVO_SECUNDARIO]
+...
 [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
-"""
+..."""
     objetivos_res = call_gemini(prompt_obj)
 
-    def extraer_obj(etiqueta):
-        patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
-        r = re.search(patron, objetivos_res, re.DOTALL)
-        return r.group(1).strip() if r else ""
-
-    titulo1 = extraer_obj("TITULO_PRIMER_OBJETIVO_SECUNDARIO")
-    desc1 = extraer_obj("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO")
-    titulo2 = extraer_obj("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO")
-    desc2 = extraer_obj("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO")
-    titulo3 = extraer_obj("TITULO_TERCER_OBJETIVO_SECUNDARIO")
-    desc3 = extraer_obj("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO")
+    titulo1 = extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO", objetivos_res)
+    desc1 = extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO", objetivos_res)
+    titulo2 = extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO", objetivos_res)
+    desc2 = extraer("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO", objetivos_res)
+    titulo3 = extraer("TITULO_TERCER_OBJETIVO_SECUNDARIO", objetivos_res)
+    desc3 = extraer("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO", objetivos_res)
 
     template_copy = drive_service.files().copy(
         fileId=TEMPLATE_ID,
@@ -211,22 +184,18 @@ Elige los 3 más importantes y devuelve:
 
     return f"https://docs.google.com/document/d/{document_id}/edit"
 
-# === Crear y exportar Outline a Google Sheets ===
 def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline):
-    # Convertimos el outline Markdown a DataFrame (solo líneas con '|')
     lines = [line.strip() for line in outline.splitlines() if "|" in line and not line.startswith("|---")]
     df = pd.read_csv(io.StringIO("\n".join(lines)), sep="|", engine="python", skipinitialspace=True)
     df = df.dropna(axis=1, how="all")
     df.columns = [col.strip() for col in df.columns]
 
-    # Crear hoja de cálculo y poblarla
     sheet = sheets_service.spreadsheets().create(
         body={"properties": {"title": f"Outline - {nombre_del_curso}"}},
         fields="spreadsheetId"
     ).execute()
     spreadsheet_id = sheet["spreadsheetId"]
 
-    # Insertar los datos
     values = [df.columns.tolist()] + df.values.tolist()
     sheets_service.spreadsheets().values().update(
         spreadsheetId=spreadsheet_id,
@@ -235,7 +204,6 @@ def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ing
         body={"values": values}
     ).execute()
 
-    # Aplicar formato (cabecera congelada y color gris)
     requests = [
         {"updateSheetProperties": {
             "properties": {"gridProperties": {"frozenRowCount": 1}},
@@ -255,7 +223,6 @@ def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ing
         body={"requests": requests}
     ).execute()
 
-    # Compartir archivo con dominio autorizado
     drive_service.permissions().create(
         fileId=spreadsheet_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
