@@ -8,9 +8,8 @@ import requests
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from functools import lru_cache
 
-# === Autenticación para APIs de Google Docs, Sheets y Drive ===
+# === Google Services Setup ===
 with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
     json.dump(json.loads(st.secrets["SERVICE_ACCOUNT_JSON"]), f)
     SERVICE_ACCOUNT_FILE = f.name
@@ -28,7 +27,7 @@ sheets_service = build("sheets", "v4", credentials=creds)
 
 TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
 
-# === NUEVO: Función para llamar a Gemini con API Key ===
+# === Gemini API ===
 def call_gemini(prompt: str) -> str:
     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
     headers = {"Content-Type": "application/json"}
@@ -48,7 +47,7 @@ def call_gemini(prompt: str) -> str:
         st.error(f"Error en API Gemini: {response.status_code} - {response.text}")
         raise Exception("Fallo la llamada a Gemini con API Key.")
 
-# === Generación completa de datos instruccionales ===
+# === Prompting y generación de datos del curso ===
 @st.cache_data(show_spinner=False)
 def generar_datos_generales(nombre_del_curso, nivel, publico, student_persona, siguiente, objetivos_raw):
     prompt = f"""
@@ -73,18 +72,35 @@ Devuélveme lo siguiente, separado por etiquetas:
 [OUTLINE]
 ...
 
-El outline debe incluir exactamente 12 clases (4 por semana durante 3 semanas).
+Los siguientes campos corresponden a los tres objetivos secundarios clave más importantes. Usa frases claras, distintas y útiles para el diseño del curso:
 
-Devuelve el outline como una tabla en formato Markdown con las siguientes columnas:
+[TITULO_PRIMER_OBJETIVO_SECUNDARIO]
+...
 
-| Clase | Título | Conceptos Clave | Objetivos | Descripción |
+[DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
+...
 
-- No repitas títulos.
-- No uses "parte 1 / parte 2".
-- En "Conceptos Clave" incluye 3 conceptos numerados.
-- En "Objetivos" incluye 3 objetivos distintos.
+[TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
+...
 
-    """
+[DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
+...
+
+[TITULO_TERCER_OBJETIVO_SECUNDARIO]
+...
+
+[DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
+...
+
+El outline debe incluir exactamente 12 clases (4 por semana durante 3 semanas) y estar en formato de tabla Markdown con estas columnas:
+
+| Clase | Título | Conceptos Clave | Objetivo 1 | Objetivo 2 | Objetivo 3 | Descripción |
+
+Cada objetivo debe escribirse así dentro de la celda (una línea por campo):
+
+Título: Analizar datos estructurados  
+Descripción: El estudiante será capaz de identificar patrones y relaciones...
+"""
     respuesta = call_gemini(prompt)
 
     def extraer(etiqueta):
@@ -97,8 +113,17 @@ Devuelve el outline como una tabla en formato Markdown con las siguientes column
     perfil_egreso = extraer("PERFIL_EGRESO")
     outline = extraer("OUTLINE")
 
-    return perfil_ingreso, objetivos, perfil_egreso, outline
+    # Nuevos campos: objetivos secundarios
+    titulo1 = extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO")
+    desc1 = extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO")
+    titulo2 = extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO")
+    desc2 = extraer("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO")
+    titulo3 = extraer("TITULO_TERCER_OBJETIVO_SECUNDARIO")
+    desc3 = extraer("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO")
 
+    return perfil_ingreso, objetivos, perfil_egreso, outline, titulo1, desc1, titulo2, desc2, titulo3, desc3
+
+# === Placeholder replacement ===
 def replace_placeholder(document_id, placeholder, new_text):
     requests = [{
         "replaceAllText": {
@@ -108,92 +133,52 @@ def replace_placeholder(document_id, placeholder, new_text):
     }]
     docs_service.documents().batchUpdate(documentId=document_id, body={"requests": requests}).execute()
 
-def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publico, siguiente, perfil_ingreso, perfil_egreso, outline):
+# === Generación del syllabus usando objetivos directamente ===
+def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publico, siguiente,
+                               perfil_ingreso, perfil_egreso, outline,
+                               titulo1, desc1, titulo2, desc2, titulo3, desc3):
     anio = 2025
 
-    # Función auxiliar reutilizable para secciones
     def pedir_seccion(etiqueta, instruccion):
         prompt = f"""
-            Curso: {nombre_del_curso}
-            Año: {anio}
-            Nivel: {nivel}
-            Objetivos: {objetivos_mejorados}
-            Perfil de ingreso: {perfil_ingreso}
-            Perfil de egreso: {perfil_egreso}
-            Outline:
-            {outline}
+Curso: {nombre_del_curso}
+Año: {anio}
+Nivel: {nivel}
+Objetivos: {objetivos_mejorados}
+Perfil de ingreso: {perfil_ingreso}
+Perfil de egreso: {perfil_egreso}
+Outline:
+{outline}
 
-            Devuelve únicamente el contenido para la sección: [{etiqueta}]
-            {instruccion}
-            """
+Devuelve únicamente el contenido para la sección: [{etiqueta}]
+{instruccion}
+"""
         respuesta = call_gemini(prompt)
         return respuesta.strip()
 
-    # Generar secciones principales
     generalidades = pedir_seccion("GENERALIDADES_DEL_PROGRAMA", "Redacta un párrafo breve que combine descripción general del curso, su objetivo y el perfil de egreso.")
     ingreso = pedir_seccion("PERFIL_INGRESO", "Redacta un párrafo claro y directo del perfil de ingreso del estudiante.")
     detalles = pedir_seccion("DETALLES_PLAN_ESTUDIOS", "Escribe la lista de 12 clases, cada una con título y una breve descripción.")
 
-    # Pedir bloque de objetivos secundarios en un solo prompt
-    objetivos_texto = pedir_seccion("OBJETIVOS_SECUNDARIOS", """
-            Devuelve los 3 objetivos secundarios clave en este formato exacto:
-
-            [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
-            ...
-
-            [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
-            ...
-
-            [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
-            ...
-
-            [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
-            ...
-
-            [TITULO_TERCER_OBJETIVO_SECUNDARIO]
-            ...
-
-            [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
-            ...
-            """)
-
-    # Extraer los valores de los objetivos
-    def extraer(etiqueta, texto=objetivos_texto):
-        patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
-        r = re.search(patron, texto, re.DOTALL)
-        return r.group(1).strip() if r else ""
-
-    objetivos = {
-        "titulo1": extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO"),
-        "desc1": extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO"),
-        "titulo2": extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO"),
-        "desc2": extraer("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO"),
-        "titulo3": extraer("TITULO_TERCER_OBJETIVO_SECUNDARIO"),
-        "desc3": extraer("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO"),
-    }
-
-    # Crear documento desde plantilla
     template_copy = drive_service.files().copy(
         fileId=TEMPLATE_ID,
         body={"name": f"Syllabus - {nombre_del_curso}"}
     ).execute()
     document_id = template_copy["id"]
 
-    # Reemplazar placeholders
     replace_placeholder(document_id, "{{nombre_del_curso}}", nombre_del_curso)
     replace_placeholder(document_id, "{{anio}}", str(anio))
     replace_placeholder(document_id, "{{generalidades_del_programa}}", generalidades)
     replace_placeholder(document_id, "{{perfil_ingreso}}", ingreso)
     replace_placeholder(document_id, "{{detalles_plan_estudios}}", detalles)
 
-    replace_placeholder(document_id, "{{titulo_primer_objetivo_secundario}}", objetivos["titulo1"])
-    replace_placeholder(document_id, "{{descripcion_primer_objetivo_secundario}}", objetivos["desc1"])
-    replace_placeholder(document_id, "{{titulo_segundo_objetivo_secundario}}", objetivos["titulo2"])
-    replace_placeholder(document_id, "{{descripcion_segundo_objetivo_secundario}}", objetivos["desc2"])
-    replace_placeholder(document_id, "{{titulo_tercer_objetivo_secundario}}", objetivos["titulo3"])
-    replace_placeholder(document_id, "{{descripcion_tercer_objetivo_secundario}}", objetivos["desc3"])
+    replace_placeholder(document_id, "{{titulo_primer_objetivo_secundario}}", titulo1)
+    replace_placeholder(document_id, "{{descripcion_primer_objetivo_secundario}}", desc1)
+    replace_placeholder(document_id, "{{titulo_segundo_objetivo_secundario}}", titulo2)
+    replace_placeholder(document_id, "{{descripcion_segundo_objetivo_secundario}}", desc2)
+    replace_placeholder(document_id, "{{titulo_tercer_objetivo_secundario}}", titulo3)
+    replace_placeholder(document_id, "{{descripcion_tercer_objetivo_secundario}}", desc3)
 
-    # Compartir documento con dominio autorizado
     drive_service.permissions().create(
         fileId=document_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
@@ -202,7 +187,7 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
 
     return f"https://docs.google.com/document/d/{document_id}/edit"
 
-
+# === Exportar outline a Google Sheets ===
 def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline):
     lines = [line.strip() for line in outline.splitlines() if "|" in line and not line.startswith("|---")]
     df = pd.read_csv(io.StringIO("\n".join(lines)), sep="|", engine="python", skipinitialspace=True)
@@ -223,6 +208,7 @@ def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ing
         body={"values": values}
     ).execute()
 
+    # Formato estético
     requests = [
         {"updateSheetProperties": {
             "properties": {"gridProperties": {"frozenRowCount": 1}},
