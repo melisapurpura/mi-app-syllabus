@@ -84,8 +84,6 @@ Devuelve el outline como una tabla en formato Markdown con las siguientes column
 - En "Conceptos Clave" incluye 3 conceptos numerados.
 - En "Objetivos" incluye 3 objetivos distintos.
 
-Incluye solo la tabla, sin explicación adicional.
-
     """
     respuesta = call_gemini(prompt)
 
@@ -113,69 +111,70 @@ def replace_placeholder(document_id, placeholder, new_text):
 def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publico, siguiente, perfil_ingreso, perfil_egreso, outline):
     anio = 2025
 
-    prompt = f"""
-Genera el contenido del syllabus para el curso "{nombre_del_curso}" del año {anio}.
+    # Función auxiliar para pedir una sola sección a Gemini
+    def pedir_seccion(etiqueta, instruccion):
+        prompt = f"""
+            Curso: {nombre_del_curso}
+            Año: {anio}
+            Nivel: {nivel}
+            Objetivos: {objetivos_mejorados}
+            Perfil de ingreso: {perfil_ingreso}
+            Perfil de egreso: {perfil_egreso}
+            Outline:
+            {outline}
 
-[GENERALIDADES_DEL_PROGRAMA]
-Parrafo breve que combine descripción del curso, objetivo general y perfil de egreso (en una frase).
+            Devuelve únicamente el contenido para la sección: [{etiqueta}]
+            {instruccion}
+            """
+        respuesta = call_gemini(prompt)
+        return respuesta.strip()
 
-[PERFIL_INGRESO]
-Parrafo del perfil de ingreso.
+    # Pedir cada parte importante del syllabus por separado
+    generalidades = pedir_seccion("GENERALIDADES_DEL_PROGRAMA", "Redacta un párrafo breve que combine descripción general del curso, su objetivo y el perfil de egreso.")
+    ingreso = pedir_seccion("PERFIL_INGRESO", "Redacta un párrafo claro y directo del perfil de ingreso del estudiante.")
+    detalles = pedir_seccion("DETALLES_PLAN_ESTUDIOS", "Escribe la lista de 12 clases, cada una con título y una breve descripción.")
 
-[DETALLES_PLAN_ESTUDIOS]
-Lista con título y descripción corta de cada una de las 12 clases.
+    # Prompt para extraer los objetivos secundarios clave
+    prompt_obj = f"""
+            De los siguientes objetivos:
+            {objetivos_mejorados}
 
-Datos:
-Perfil ingreso: {perfil_ingreso}
-Perfil egreso: {perfil_egreso}
-Objetivos: {objetivos_mejorados}
-Outline:
-{outline}
-    """
-    secciones = call_gemini(prompt)
+            Selecciona los 3 objetivos secundarios más importantes y genera:
 
-    def extraer(etiqueta, texto=secciones):
+            [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
+            ...
+            [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
+            ...
+            [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
+            ...
+            [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
+            ...
+            [TITULO_TERCER_OBJETIVO_SECUNDARIO]
+            ...
+            [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
+            ..."""
+    objetivos_res = call_gemini(prompt_obj)
+
+    def extraer(etiqueta, texto=objetivos_res):
         patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
         r = re.search(patron, texto, re.DOTALL)
         return r.group(1).strip() if r else ""
 
-    generalidades = extraer("GENERALIDADES_DEL_PROGRAMA")
-    ingreso = extraer("PERFIL_INGRESO")
-    detalles = extraer("DETALLES_PLAN_ESTUDIOS")
+    titulo1 = extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO")
+    desc1 = extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO")
+    titulo2 = extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO")
+    desc2 = extraer("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO")
+    titulo3 = extraer("TITULO_TERCER_OBJETIVO_SECUNDARIO")
+    desc3 = extraer("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO")
 
-    prompt_obj = f"""
-De los siguientes objetivos:
-{objetivos_mejorados}
-
-Selecciona los 3 objetivos secundarios más importantes y genera:
-
-[TITULO_PRIMER_OBJETIVO_SECUNDARIO]
-...
-[DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
-...
-[TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
-...
-[DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
-...
-[TITULO_TERCER_OBJETIVO_SECUNDARIO]
-...
-[DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
-..."""
-    objetivos_res = call_gemini(prompt_obj)
-
-    titulo1 = extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO", objetivos_res)
-    desc1 = extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO", objetivos_res)
-    titulo2 = extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO", objetivos_res)
-    desc2 = extraer("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO", objetivos_res)
-    titulo3 = extraer("TITULO_TERCER_OBJETIVO_SECUNDARIO", objetivos_res)
-    desc3 = extraer("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO", objetivos_res)
-
+    # Crear documento desde plantilla
     template_copy = drive_service.files().copy(
         fileId=TEMPLATE_ID,
         body={"name": f"Syllabus - {nombre_del_curso}"}
     ).execute()
     document_id = template_copy["id"]
 
+    # Reemplazar los placeholders de la plantilla
     replace_placeholder(document_id, "{{nombre_del_curso}}", nombre_del_curso)
     replace_placeholder(document_id, "{{anio}}", str(anio))
     replace_placeholder(document_id, "{{generalidades_del_programa}}", generalidades)
@@ -188,6 +187,7 @@ Selecciona los 3 objetivos secundarios más importantes y genera:
     replace_placeholder(document_id, "{{descripcion_tercer_objetivo_secundario}}", desc3)
     replace_placeholder(document_id, "{{detalles_plan_estudios}}", detalles)
 
+    # Compartir el archivo con dominio autorizado
     drive_service.permissions().create(
         fileId=document_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
