@@ -73,7 +73,19 @@ Devuélveme lo siguiente, separado por etiquetas:
 [OUTLINE]
 ...
 
-El outline debe incluir exactamente 12 clases (4 por semana durante 3 semanas), sin títulos repetidos, sin 'parte 1 / parte 2', con conceptos clave únicos (3 por clase, numerados), descripción clara y 3 objetivos distintos por clase.
+El outline debe incluir exactamente 12 clases (4 por semana durante 3 semanas).
+
+Devuelve el outline como una tabla en formato Markdown con las siguientes columnas:
+
+| Clase | Título | Conceptos Clave | Objetivos | Descripción |
+
+- No repitas títulos.
+- No uses "parte 1 / parte 2".
+- En "Conceptos Clave" incluye 3 conceptos numerados.
+- En "Objetivos" incluye 3 objetivos distintos.
+
+Incluye solo la tabla, sin explicación adicional.
+
     """
     respuesta = call_gemini(prompt)
 
