@@ -10,16 +10,33 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from functools import lru_cache
 
-from vertexai.language_models import ChatModel
 import vertexai
+from vertexai.language_models import ChatModel
+from google.auth import load_credentials_from_file
+
 
 # === Configuración inicial optimizada ===
 # Creamos cliente OpenAI moderno
 #openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 @st.cache_resource
 def get_chat_model():
-    vertexai.init(project=st.secrets["GCP_PROJECT_ID"], location="us-central1")
-    chat_model = ChatModel.from_pretrained("gemini-1.5-flash-001")  # También puedes usar "gemini-pro"
+    # Guardar temporalmente el archivo JSON desde secrets
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
+        json.dump(json.loads(st.secrets["SERVICE_ACCOUNT_JSON"]), f)
+        service_account_file = f.name
+
+    # Cargar credenciales directamente desde el archivo
+    credentials, _ = load_credentials_from_file(service_account_file)
+
+    # Inicializar Vertex AI con esas credenciales
+    vertexai.init(
+        project=st.secrets["GCP_PROJECT_ID"],
+        location="us-central1",
+        credentials=credentials
+    )
+
+    # Iniciar chat con Gemini Flash
+    chat_model = ChatModel.from_pretrained("gemini-1.5-flash-001")
     return chat_model.start_chat()
 
 def call_gemini(prompt: str) -> str:
