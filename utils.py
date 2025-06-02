@@ -111,7 +111,7 @@ def replace_placeholder(document_id, placeholder, new_text):
 def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publico, siguiente, perfil_ingreso, perfil_egreso, outline):
     anio = 2025
 
-  # Función auxiliar para secciones sueltas
+    # Función auxiliar reutilizable para secciones
     def pedir_seccion(etiqueta, instruccion):
         prompt = f"""
             Curso: {nombre_del_curso}
@@ -129,16 +129,14 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
         respuesta = call_gemini(prompt)
         return respuesta.strip()
 
-    # Función auxiliar específica para los objetivos secundarios
-    def pedir_objetivos_secundarios(objetivos_mejorados):
-        prompt = f"""
-            De los siguientes objetivos del curso:
+    # Generar secciones principales
+    generalidades = pedir_seccion("GENERALIDADES_DEL_PROGRAMA", "Redacta un párrafo breve que combine descripción general del curso, su objetivo y el perfil de egreso.")
+    ingreso = pedir_seccion("PERFIL_INGRESO", "Redacta un párrafo claro y directo del perfil de ingreso del estudiante.")
+    detalles = pedir_seccion("DETALLES_PLAN_ESTUDIOS", "Escribe la lista de 12 clases, cada una con título y una breve descripción.")
 
-            {objetivos_mejorados}
-
-            Selecciona los 3 objetivos secundarios más importantes.
-
-            Devuélvelos de manera corta y consisa usando el siguiente formato exacto:
+    # Pedir bloque de objetivos secundarios en un solo prompt
+    objetivos_texto = pedir_seccion("OBJETIVOS_SECUNDARIOS", """
+            Devuelve los 3 objetivos secundarios clave en este formato exacto:
 
             [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
             ...
@@ -157,31 +155,24 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
 
             [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
             ...
-            """
-        respuesta = call_gemini(prompt)
+            """)
 
-        def extraer(etiqueta):
-            patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
-            r = re.search(patron, respuesta, re.DOTALL)
-            return r.group(1).strip() if r else ""
+    # Extraer los valores de los objetivos
+    def extraer(etiqueta, texto=objetivos_texto):
+        patron = rf"\[{etiqueta}\]\n(.*?)(?=\[|\Z)"
+        r = re.search(patron, texto, re.DOTALL)
+        return r.group(1).strip() if r else ""
 
-        return {
-            "titulo1": extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO"),
-            "desc1": extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO"),
-            "titulo2": extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO"),
-            "desc2": extraer("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO"),
-            "titulo3": extraer("TITULO_TERCER_OBJETIVO_SECUNDARIO"),
-            "desc3": extraer("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO"),
-        }
+    objetivos = {
+        "titulo1": extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO"),
+        "desc1": extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO"),
+        "titulo2": extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO"),
+        "desc2": extraer("DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO"),
+        "titulo3": extraer("TITULO_TERCER_OBJETIVO_SECUNDARIO"),
+        "desc3": extraer("DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO"),
+    }
 
-    # Generar cada sección por separado
-    generalidades = pedir_seccion("GENERALIDADES_DEL_PROGRAMA", "Redacta un párrafo breve que combine descripción general del curso, su objetivo y el perfil de egreso.")
-    ingreso = pedir_seccion("PERFIL_INGRESO", "Redacta un párrafo claro y directo del perfil de ingreso del estudiante.")
-    detalles = pedir_seccion("DETALLES_PLAN_ESTUDIOS", "Escribe la lista de 12 clases, cada una con título y una breve descripción.")
-
-    objetivos = pedir_objetivos_secundarios(objetivos_mejorados)
-
-    # Copiar plantilla en Drive
+    # Crear documento desde plantilla
     template_copy = drive_service.files().copy(
         fileId=TEMPLATE_ID,
         body={"name": f"Syllabus - {nombre_del_curso}"}
@@ -202,7 +193,7 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
     replace_placeholder(document_id, "{{titulo_tercer_objetivo_secundario}}", objetivos["titulo3"])
     replace_placeholder(document_id, "{{descripcion_tercer_objetivo_secundario}}", objetivos["desc3"])
 
-    # Compartir documento con tu dominio
+    # Compartir documento con dominio autorizado
     drive_service.permissions().create(
         fileId=document_id,
         body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
@@ -210,6 +201,7 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
     ).execute()
 
     return f"https://docs.google.com/document/d/{document_id}/edit"
+
 
 def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline):
     lines = [line.strip() for line in outline.splitlines() if "|" in line and not line.startswith("|---")]
