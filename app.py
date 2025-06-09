@@ -17,7 +17,7 @@ st.markdown("Completa los campos del curso para generar automáticamente el syll
 # === Inputs del curso ===
 nombre = st.text_input("Nombre del curso")
 nivel = st.selectbox("Nivel del curso", ["básico", "intermedio", "avanzado"])
-publico = st.text_area("Público objetivo" "(Agregar Industria)")
+publico = st.text_area("Público objetivo (Agregar Industria)")
 objetivos_raw = st.text_area("Objetivos del curso")
 siguiente = st.text_input("Nombre del siguiente curso sugerido", value="N/A")
 
