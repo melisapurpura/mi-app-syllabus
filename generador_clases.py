@@ -1,6 +1,6 @@
 import pandas as pd
 import re
-from utils import call_gemini, docs_service, drive_service
+from utils import call_gemini, docs_service, drive_service, sheets_service
 
 
 def leer_outline_desde_sheets(sheet_url: str) -> list:
@@ -9,7 +9,7 @@ def leer_outline_desde_sheets(sheet_url: str) -> list:
     if not spreadsheet_id:
         raise ValueError("URL de Google Sheets no válida")
 
-    sheet_data = docs_service.spreadsheets().values().get(
+    sheet_data = sheets_service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id, range="A1:G100"
     ).execute()
     values = sheet_data.get("values", [])
