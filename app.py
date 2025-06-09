@@ -4,6 +4,10 @@ from utils import (
     generar_syllabus_completo,
     generar_outline_csv
 )
+from generador_clases import (
+    leer_outline_desde_sheets,
+    generar_documento_clases_completo
+)
 
 # Configuración de la página de Streamlit
 st.set_page_config(page_title="Generador de Syllabus", layout="centered")
@@ -59,3 +63,22 @@ if st.button("Generar Syllabus y Outline"):
             st.error(f"Ha ocurrido un error durante la generación: {str(e)}")
             st.info("Verifica que todos los campos estén completos y que la plantilla tenga los placeholders correctos.")
             st.info("Placeholders necesarios en la plantilla: {{titulo_primer_objetivo_secundario}}, {{descripcion_primer_objetivo_secundario}}, etc.")
+st.markdown("---")
+st.subheader("📚 Generar contenido completo de clases")
+
+#Generar clases
+if st.button("Generar clases desde Outline creado"):
+    with st.spinner("Generando documento con las 12 clases completas..."):
+        try:
+            clases_info = leer_outline_desde_sheets(link_outline)
+            link_doc = generar_documento_clases_completo(
+                nombre_doc=f"Clases - {nombre}",
+                clases_info=clases_info,
+                perfil_estudiante=student_persona,
+                industria="analítica de datos"
+            )
+            st.success("✅ Documento de clases generado exitosamente.")
+            st.markdown(f"[📝 Ver documento con clases]({link_doc})", unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error(f"Ocurrió un error: {str(e)}")
