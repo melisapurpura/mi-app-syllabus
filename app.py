@@ -51,6 +51,10 @@ if st.button("Generar Syllabus y Outline"):
             # Generar el outline en Google Sheets
             link_outline = generar_outline_csv(nombre, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline)
 
+            # Guardar en session_state
+            st.session_state["link_syllabus"] = link_syllabus
+            st.session_state["link_outline"] = link_outline
+
             # Mostrar enlaces
             st.success("✅ Syllabus y Outline generados correctamente.")
             col1, col2 = st.columns(2)
@@ -63,22 +67,27 @@ if st.button("Generar Syllabus y Outline"):
             st.error(f"Ha ocurrido un error durante la generación: {str(e)}")
             st.info("Verifica que todos los campos estén completos y que la plantilla tenga los placeholders correctos.")
             st.info("Placeholders necesarios en la plantilla: {{titulo_primer_objetivo_secundario}}, {{descripcion_primer_objetivo_secundario}}, etc.")
+
+# === Botón para generar clases completas ===
 st.markdown("---")
 st.subheader("📚 Generar contenido completo de clases")
 
-#Generar clases
 if st.button("Generar clases desde Outline creado"):
     with st.spinner("Generando documento con las 12 clases completas..."):
-        try:
-            clases_info = leer_outline_desde_sheets(link_outline)
-            link_doc = generar_documento_clases_completo(
-                nombre_doc=f"Clases - {nombre}",
-                clases_info=clases_info,
-                perfil_estudiante=student_persona,
-                industria="analítica de datos"
-            )
-            st.success("✅ Documento de clases generado exitosamente.")
-            st.markdown(f"[📝 Ver documento con clases]({link_doc})", unsafe_allow_html=True)
+        link_outline_guardado = st.session_state.get("link_outline", None)
+        if link_outline_guardado:
+            try:
+                clases_info = leer_outline_desde_sheets(link_outline_guardado)
+                link_doc = generar_documento_clases_completo(
+                    nombre_doc=f"Clases - {nombre}",
+                    clases_info=clases_info,
+                    perfil_estudiante=student_persona,
+                    industria="analítica de datos"
+                )
+                st.success("✅ Documento de clases generado exitosamente.")
+                st.markdown(f"[📝 Ver documento con clases]({link_doc})", unsafe_allow_html=True)
 
-        except Exception as e:
-            st.error(f"Ocurrió un error: {str(e)}")
+            except Exception as e:
+                st.error(f"Ocurrió un error: {str(e)}")
+        else:
+            st.warning("⚠️ Primero debes generar el outline para poder crear las clases.")
