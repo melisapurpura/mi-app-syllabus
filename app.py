@@ -17,7 +17,7 @@ st.markdown("Completa los campos del curso para generar automáticamente el syll
 # === Inputs del curso ===
 nombre = st.text_input("Nombre del curso")
 nivel = st.selectbox("Nivel del curso", ["básico", "intermedio", "avanzado"])
-publico = st.text_area("Público objetivo")
+publico = st.text_area("Público objetivo" "(Agregar Industria)")
 objetivos_raw = st.text_area("Objetivos del curso")
 siguiente = st.text_input("Nombre del siguiente curso sugerido", value="N/A")
 
@@ -31,7 +31,7 @@ student_persona = (
     "- Tiene poco tiempo y necesita soluciones prácticas que le ayuden a avanzar ya."
 )
 
-# === Acción principal ===
+# === Acción principal: Generar syllabus y outline ===
 if st.button("Generar Syllabus y Outline"):
     with st.spinner("Generando contenido con IA..."):
         try:
@@ -72,10 +72,13 @@ if st.button("Generar Syllabus y Outline"):
 st.markdown("---")
 st.subheader("📚 Generar contenido completo de clases")
 
+# Leer estado actual del outline generado
+link_outline_guardado = st.session_state.get("link_outline", None)
+
+# Botón siempre visible, con validación de estado
 if st.button("Generar clases desde Outline creado"):
-    with st.spinner("Generando documento con las 12 clases completas..."):
-        link_outline_guardado = st.session_state.get("link_outline", None)
-        if link_outline_guardado:
+    if link_outline_guardado:
+        with st.spinner("Generando documento con las 12 clases completas..."):
             try:
                 clases_info = leer_outline_desde_sheets(link_outline_guardado)
                 link_doc = generar_documento_clases_completo(
@@ -89,5 +92,6 @@ if st.button("Generar clases desde Outline creado"):
 
             except Exception as e:
                 st.error(f"Ocurrió un error: {str(e)}")
-        else:
-            st.warning("⚠️ Primero debes generar el outline para poder crear las clases.")
+    else:
+        st.warning("⚠️ Primero debes generar el syllabus y outline con el botón superior.")
+        st.info("Para hacerlo, completa los campos del curso y haz clic en 'Generar Syllabus y Outline'. Luego podrás crear las clases.")
