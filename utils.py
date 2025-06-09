@@ -29,7 +29,7 @@ TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
 
 # === Gemini API ===
 def call_gemini(prompt: str) -> str:
-    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     headers = {"Content-Type": "application/json"}
     params = {"key": st.secrets["GEMINI_API_KEY"]}
     data = {
