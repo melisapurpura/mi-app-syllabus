@@ -40,7 +40,7 @@ Cada slide debe contener lo siguiente:
 1. TÍTULO en mayúsculas
 2. TEXTO COMPLETO explicativo (mínimo 5–7 líneas), listo para presentación, sin frases genéricas ni instrucciones. El texto debe estar completo y no depender de intervención humana.
 3. Un EJEMPLO o caso de uso empresarial ROBUSTO: menciona empresas reales o escenarios de alto valor que generen un *aha moment* al estudiante. Incluye métricas, resultados o decisiones estratégicas.
-   - El caso de uso debe incluir un **link funcional y verificable** como fuente (artículo, blog técnico, estudio de caso, etc.). Si no hay fuente real, no lo uses.
+   - El caso de uso debe incluir un **link funcional y verificable** como fuente. Si no hay fuente real, no lo uses.
 4. Un TIP o recomendación práctica basada en experiencia real.
 5. Un RECURSO VISUAL sugerido (describe qué se debe mostrar: gráfico, dashboard, proceso, etc.)
 
@@ -48,7 +48,7 @@ Cada slide debe contener lo siguiente:
 ESTRUCTURA DE LOS 20 SLIDES:
 
 1. Bienvenida y título de la clase  
-2. Objetivos de aprendizaje claros (verbos de acción)  
+2. Objetivos de aprendizaje 
 3. Relevancia del tema en el mundo actual (con fuente real si das datos)  
 4. Dolor empresarial que resuelve el tema  
 5. Concepto clave 1: definición clara y utilidad  
@@ -56,17 +56,17 @@ ESTRUCTURA DE LOS 20 SLIDES:
 7. Concepto clave 1: caso de uso real con métricas o impacto + link  
 8. Concepto clave 2: qué es, cómo funciona, rol en la empresa  
 9. Concepto clave 2: herramientas del mercado con comparación concreta  
-10. Concepto clave 2: ejemplo en otra industria con link  
+10. Concepto clave 2: otro ejemplo con link  
 11. Proceso paso a paso para implementar lo aprendido  
 12. Errores comunes cometidos por empresas y cómo evitarlos  
 13. Mitos vs realidades que confunden a los líderes  
-14. Beneficios tangibles para negocio (costo, ROI, crecimiento)  
-15. Tips de implementación efectivos en la práctica  
+14. Beneficios tangibles para (costo, ROI, crecimiento)  
+15. Tips de implementación efectivos en la práctica o tips en general 
 16. KPIs o métricas clave para evaluar éxito  
 17. Cómo gestionar resistencia al cambio al aplicar este tema  
 18. Preguntas reflexivas para el alumno y su contexto  
-19. Actividad práctica con instrucciones claras  
-20. Cierre con resumen, llamada a la acción y frase inspiradora  
+19. Actividad práctica   
+20. Cierre con resumen y llamada a la acción 
 
 Contexto:
 
@@ -77,11 +77,6 @@ Contexto:
 - Perfil del estudiante: {perfil_estudiante}
 - Industria de enfoque: {industria}
 
-Importante:
-- No uses frases como “podrías incluir”, “un buen ejemplo sería…”, “usa analogías…”.
-- Escribe todo como si fuera la versión final de una presentación ejecutiva lista para usarse con estudiantes.
-- Evita repeticiones y asegúrate de que cada slide tenga contenido distintivo y profundo.
-- Si no encuentras una fuente confiable con link real, **no inventes** y reemplaza con otra evidencia útil.
 """
     return call_gemini(prompt)
 
