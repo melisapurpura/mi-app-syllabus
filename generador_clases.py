@@ -14,14 +14,7 @@ def leer_outline_desde_sheets(sheet_url: str) -> list:
     ).execute()
     values = sheet_data.get("values", [])
 
-    if not values or len(values) < 2:
-        raise ValueError("El outline no contiene datos suficientes.")
-
     headers = values[0]
-    esperados = ["Clase", "Título", "Conceptos Clave", "Objetivo 1", "Objetivo 2", "Objetivo 3", "Descripción"]
-    if headers != esperados:
-        raise ValueError(f"El outline no tiene las columnas esperadas: {esperados}")
-
     rows = values[1:]
     clases = []
     for row in rows:
@@ -93,34 +86,41 @@ def generar_documento_clases_completo(nombre_doc: str, clases_info: list, perfil
     partes = [clases_info[:6], clases_info[6:]]
 
     for parte_idx, parte in enumerate(partes, 1):
-        contenido_total = ""
-        for i, clase in enumerate(parte, 1):
-            try:
-                contenido_clase = generar_clase_con_prompt(clase, perfil_estudiante, industria)
-            except Exception as e:
-                contenido_clase = f"[ERROR al generar esta clase]: {e}"
-            contenido_total += f"\n\nCLASE {i + (parte_idx - 1) * 6}: {clase['titulo']}\n\n{contenido_clase.strip()}\n"
-
+        # Crear documento vacío
         documento = drive_service.files().create(
             body={"name": f"{nombre_doc} - Parte {parte_idx}", "mimeType": "application/vnd.google-apps.document"},
             fields="id"
         ).execute()
         document_id = documento["id"]
 
-        docs_service.documents().batchUpdate(
-            documentId=document_id,
-            body={
-                "requests": [
-                    {
-                        "insertText": {
-                            "location": {"index": 1},
-                            "text": contenido_total
-                        }
-                    }
-                ]
-            }
-        ).execute()
+        # Insertar clase por clase en orden
+        cursor_index = 1  # se va actualizando manualmente
+        for i, clase in enumerate(parte, 1):
+            try:
+                contenido_clase = generar_clase_con_prompt(clase, perfil_estudiante, industria)
+            except Exception as e:
+                contenido_clase = f"[ERROR al generar esta clase]: {e}"
 
+            texto = f"\n\nCLASE {i + (parte_idx - 1) * 6}: {clase['titulo']}\n\n{contenido_clase.strip()}\n"
+
+            docs_service.documents().batchUpdate(
+                documentId=document_id,
+                body={
+                    "requests": [
+                        {
+                            "insertText": {
+                                "location": {"index": cursor_index},
+                                "text": texto
+                            }
+                        }
+                    ]
+                }
+            ).execute()
+
+            # Actualiza la posición para el siguiente insert
+            cursor_index += len(texto)
+
+        # Dar permisos de edición en dominio
         drive_service.permissions().create(
             fileId=document_id,
             body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
