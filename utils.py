@@ -185,3 +185,51 @@ Devuelve únicamente el contenido para la sección: [{etiqueta}]
     ).execute()
 
     return f"https://docs.google.com/document/d/{document_id}/edit"
+
+def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline):
+    lines = [line.strip() for line in outline.splitlines() if "|" in line and not line.startswith("|---")]
+    df = pd.read_csv(io.StringIO("\n".join(lines)), sep="|", engine="python", skipinitialspace=True)
+    df = df.dropna(axis=1, how="all")
+    df.columns = [col.strip() for col in df.columns]
+
+    sheet = sheets_service.spreadsheets().create(
+        body={"properties": {"title": f"Outline - {nombre_del_curso}"}},
+        fields="spreadsheetId"
+    ).execute()
+    spreadsheet_id = sheet["spreadsheetId"]
+
+    values = [df.columns.tolist()] + df.values.tolist()
+    sheets_service.spreadsheets().values().update(
+        spreadsheetId=spreadsheet_id,
+        range="A1",
+        valueInputOption="RAW",
+        body={"values": values}
+    ).execute()
+
+    # Estética: encabezado congelado y color
+    requests = [
+        {"updateSheetProperties": {
+            "properties": {"gridProperties": {"frozenRowCount": 1}},
+            "fields": "gridProperties.frozenRowCount"
+        }},
+        {"repeatCell": {
+            "range": {"startRowIndex": 0, "endRowIndex": 1},
+            "cell": {"userEnteredFormat": {
+                "backgroundColor": {"red": 0.2, "green": 0.2, "blue": 0.2},
+                "textFormat": {"foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}, "bold": True}
+            }},
+            "fields": "userEnteredFormat(backgroundColor,textFormat)"
+        }}
+    ]
+    sheets_service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={"requests": requests}
+    ).execute()
+
+    drive_service.permissions().create(
+        fileId=spreadsheet_id,
+        body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
+        fields="id"
+    ).execute()
+
+    return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
