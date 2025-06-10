@@ -33,56 +33,55 @@ def leer_outline_desde_sheets(sheet_url: str) -> list:
 
 def generar_clase_con_prompt(clase_info: dict, perfil_estudiante: str, industria: str) -> str:
     prompt = f"""
-Actúa como un diseñador instruccional experto con experiencia en tecnología, negocios y analítica de datos.
-Tu tarea es escribir TODO el contenido detallado para cada uno de los 25 slides de una clase, asegurándote de que sea claro, profesional, atractivo y útil para estudiantes en contextos empresariales.
+Actúa como un diseñador instruccional experto con experiencia en tecnología, negocios y analítica de datos. Tu tarea es generar TODO el contenido detallado y final de una clase compuesta por 20 slides.
 
-📘 Datos base:
-Título de la clase: {clase_info['titulo']}
-Descripción de la clase: {clase_info['descripcion']}
-Conceptos clave: {clase_info['conceptos']}
-Objetivos:
-- {clase_info['objetivos'][0]}
-- {clase_info['objetivos'][1]}
-- {clase_info['objetivos'][2]}
-Industria de enfoque: {industria}
-Perfil del estudiante:
-{perfil_estudiante}
+Cada slide debe contener lo siguiente:
 
-🧱 ESTRUCTURA DE SLIDES (25 total)
-INTRODUCCIÓN (Slides 1–4):
-- Bienvenida y título de la clase
-- Objetivos de aprendizaje
-- Relevancia del tema (dato o tendencia)
-- Dolor empresarial que resuelve el tema
+1. TÍTULO en mayúsculas
+2. TEXTO COMPLETO explicativo (mínimo 5–7 líneas), listo para presentación, sin frases genéricas ni instrucciones. El texto debe estar completo y no depender de intervención humana.
+3. Un EJEMPLO o caso de uso empresarial ROBUSTO: menciona empresas reales o escenarios de alto valor que generen un *aha moment* al estudiante. Incluye métricas, resultados o decisiones estratégicas.
+   - El caso de uso debe incluir un **link funcional y verificable** como fuente (artículo, blog técnico, estudio de caso, etc.). Si no hay fuente real, no lo uses.
+4. Un TIP o recomendación práctica basada en experiencia real.
+5. Un RECURSO VISUAL sugerido (describe qué se debe mostrar: gráfico, dashboard, proceso, etc.)
 
-DESARROLLO (Slides 5–20):
-- Concepto clave 1 (definición práctica)
-- Caso de uso real (empresa 1)
-- Tipos o clasificaciones del concepto
-- Concepto clave 2 (cómo funciona)
-- Herramientas del mercado (comparación)
-- Caso de uso en otra industria
-- Pasos para aplicarlo
-- Errores comunes
-- Mitos vs realidad
-- Beneficios para el negocio
-- Tips de implementación
-- KPIs para medir éxito
-- Gestión de resistencia al cambio
-- Historia de éxito empresarial
-- Preguntas de reflexión
-- Conexión con el rol del alumno
 
-ACTIVIDAD PRÁCTICA (Slide 21)
-- Dinámica: aplicar el tema a un reto propio (con instrucciones claras)
+ESTRUCTURA DE LOS 20 SLIDES:
 
-CIERRE Y CONCLUSIÓN (Slides 22–24)
-- Resumen de conceptos clave
-- Llamado a la acción
-- Cita o frase final inspiradora
+1. Bienvenida y título de la clase  
+2. Objetivos de aprendizaje claros (verbos de acción)  
+3. Relevancia del tema en el mundo actual (con fuente real si das datos)  
+4. Dolor empresarial que resuelve el tema  
+5. Concepto clave 1: definición clara y utilidad  
+6. Concepto clave 1: clasificaciones, componentes o tipos  
+7. Concepto clave 1: caso de uso real con métricas o impacto + link  
+8. Concepto clave 2: qué es, cómo funciona, rol en la empresa  
+9. Concepto clave 2: herramientas del mercado con comparación concreta  
+10. Concepto clave 2: ejemplo en otra industria con link  
+11. Proceso paso a paso para implementar lo aprendido  
+12. Errores comunes cometidos por empresas y cómo evitarlos  
+13. Mitos vs realidades que confunden a los líderes  
+14. Beneficios tangibles para negocio (costo, ROI, crecimiento)  
+15. Tips de implementación efectivos en la práctica  
+16. KPIs o métricas clave para evaluar éxito  
+17. Cómo gestionar resistencia al cambio al aplicar este tema  
+18. Preguntas reflexivas para el alumno y su contexto  
+19. Actividad práctica con instrucciones claras  
+20. Cierre con resumen, llamada a la acción y frase inspiradora  
 
-RECURSOS (Slide 25)
-- Lecturas, herramientas, videos o sitios sugeridos
+Contexto:
+
+- Título de la clase: {clase_info['titulo']}
+- Descripción: {clase_info['descripcion']}
+- Objetivos: {clase_info['objetivos']}
+- Conceptos clave: {clase_info['conceptos']}
+- Perfil del estudiante: {perfil_estudiante}
+- Industria de enfoque: {industria}
+
+Importante:
+- No uses frases como “podrías incluir”, “un buen ejemplo sería…”, “usa analogías…”.
+- Escribe todo como si fuera la versión final de una presentación ejecutiva lista para usarse con estudiantes.
+- Evita repeticiones y asegúrate de que cada slide tenga contenido distintivo y profundo.
+- Si no encuentras una fuente confiable con link real, **no inventes** y reemplaza con otra evidencia útil.
 """
     return call_gemini(prompt)
 
