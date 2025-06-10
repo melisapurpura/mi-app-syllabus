@@ -14,7 +14,14 @@ def leer_outline_desde_sheets(sheet_url: str) -> list:
     ).execute()
     values = sheet_data.get("values", [])
 
+    if not values or len(values) < 2:
+        raise ValueError("El outline no contiene datos suficientes.")
+
     headers = values[0]
+    esperados = ["Clase", "Título", "Conceptos Clave", "Objetivo 1", "Objetivo 2", "Objetivo 3", "Descripción"]
+    if headers != esperados:
+        raise ValueError(f"El outline no tiene las columnas esperadas: {esperados}")
+
     rows = values[1:]
     clases = []
     for row in rows:
@@ -40,15 +47,14 @@ Cada slide debe contener lo siguiente:
 1. TÍTULO en mayúsculas
 2. TEXTO COMPLETO explicativo (mínimo 5–7 líneas), listo para presentación, sin frases genéricas ni instrucciones. El texto debe estar completo y no depender de intervención humana.
 3. Un EJEMPLO o caso de uso empresarial ROBUSTO: menciona empresas reales o escenarios de alto valor que generen un *aha moment* al estudiante. Incluye métricas, resultados o decisiones estratégicas.
-   - El caso de uso debe incluir un **link funcional y verificable** como fuente. Si no hay fuente real, no lo uses.
+   - El caso de uso debe incluir un link funcional y verificable como fuente. Si no hay fuente real, no lo uses.
 4. Un TIP o recomendación práctica basada en experiencia real.
 5. Un RECURSO VISUAL sugerido (describe qué se debe mostrar: gráfico, dashboard, proceso, etc.)
-
 
 ESTRUCTURA DE LOS 20 SLIDES:
 
 1. Bienvenida y título de la clase  
-2. Objetivos de aprendizaje 
+2. Objetivos de aprendizaje  
 3. Relevancia del tema en el mundo actual (con fuente real si das datos)  
 4. Dolor empresarial que resuelve el tema  
 5. Concepto clave 1: definición clara y utilidad  
@@ -61,7 +67,7 @@ ESTRUCTURA DE LOS 20 SLIDES:
 12. Errores comunes cometidos por empresas y cómo evitarlos  
 13. Mitos vs realidades que confunden a los líderes  
 14. Beneficios tangibles para (costo, ROI, crecimiento)  
-15. Tips de implementación efectivos en la práctica o tips en general 
+15. Tips de implementación efectivos en la práctica o tips en general  
 16. KPIs o métricas clave para evaluar éxito  
 17. Cómo gestionar resistencia al cambio al aplicar este tema  
 18. Preguntas reflexivas para el alumno y su contexto  
@@ -77,40 +83,50 @@ Contexto:
 - Perfil del estudiante: {perfil_estudiante}
 - Industria de enfoque: {industria}
 
+No uses frases como “puedes incluir” o “se recomienda mostrar”. Escribe el contenido real final como si fuera a presentarse en un aula o sesión empresarial. Evita repeticiones y asegura profundidad en cada slide.
 """
     return call_gemini(prompt)
 
 
-def generar_documento_clases_completo(nombre_doc: str, clases_info: list, perfil_estudiante: str, industria: str) -> str:
-    contenido_total = ""
-    for i, clase in enumerate(clases_info, 1):
-        contenido_clase = generar_clase_con_prompt(clase, perfil_estudiante, industria)
-        contenido_total += f"\n\n# CLASE {i}: {clase['titulo']}\n\n{contenido_clase}\n"
+def generar_documento_clases_completo(nombre_doc: str, clases_info: list, perfil_estudiante: str, industria: str) -> list:
+    docs_links = []
+    partes = [clases_info[:6], clases_info[6:]]
 
-    documento = drive_service.files().create(
-        body={"name": nombre_doc, "mimeType": "application/vnd.google-apps.document"},
-        fields="id"
-    ).execute()
-    document_id = documento["id"]
+    for parte_idx, parte in enumerate(partes, 1):
+        contenido_total = ""
+        for i, clase in enumerate(parte, 1):
+            try:
+                contenido_clase = generar_clase_con_prompt(clase, perfil_estudiante, industria)
+            except Exception as e:
+                contenido_clase = f"[ERROR al generar esta clase]: {e}"
+            contenido_total += f"\n\nCLASE {i + (parte_idx - 1) * 6}: {clase['titulo']}\n\n{contenido_clase.strip()}\n"
 
-    docs_service.documents().batchUpdate(
-        documentId=document_id,
-        body={
-            "requests": [
-                {
-                    "insertText": {
-                        "location": {"index": 1},
-                        "text": contenido_total
+        documento = drive_service.files().create(
+            body={"name": f"{nombre_doc} - Parte {parte_idx}", "mimeType": "application/vnd.google-apps.document"},
+            fields="id"
+        ).execute()
+        document_id = documento["id"]
+
+        docs_service.documents().batchUpdate(
+            documentId=document_id,
+            body={
+                "requests": [
+                    {
+                        "insertText": {
+                            "location": {"index": 1},
+                            "text": contenido_total
+                        }
                     }
-                }
-            ]
-        }
-    ).execute()
+                ]
+            }
+        ).execute()
 
-    drive_service.permissions().create(
-        fileId=document_id,
-        body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
-        fields="id"
-    ).execute()
+        drive_service.permissions().create(
+            fileId=document_id,
+            body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
+            fields="id"
+        ).execute()
 
-    return f"https://docs.google.com/document/d/{document_id}/edit"
+        docs_links.append(f"https://docs.google.com/document/d/{document_id}/edit")
+
+    return docs_links

@@ -68,30 +68,31 @@ if st.button("Generar Syllabus y Outline"):
             st.info("Verifica que todos los campos estén completos y que la plantilla tenga los placeholders correctos.")
             st.info("Placeholders necesarios en la plantilla: {{titulo_primer_objetivo_secundario}}, {{descripcion_primer_objetivo_secundario}}, etc.")
 
-# === Botón para generar clases completas ===
+# === Botón para generar clases completas (2 documentos) ===
 st.markdown("---")
-st.subheader("📚 Generar contenido completo de clases")
+st.subheader("📚 Generar clases (20 slides por clase, en 2 documentos separados)")
 
-# Leer estado actual del outline generado
 link_outline_guardado = st.session_state.get("link_outline", None)
 
-# Botón siempre visible, con validación de estado
 if st.button("Generar clases desde Outline creado"):
     if link_outline_guardado:
-        with st.spinner("Generando documento con las 12 clases completas..."):
+        with st.spinner("Generando documentos..."):
             try:
+                from generador_clases import leer_outline_desde_sheets, generar_documento_clases_completo
+
                 clases_info = leer_outline_desde_sheets(link_outline_guardado)
-                link_doc = generar_documento_clases_completo(
+                links_docs = generar_documento_clases_completo(
                     nombre_doc=f"Clases - {nombre}",
                     clases_info=clases_info,
                     perfil_estudiante=student_persona,
                     industria="analítica de datos"
                 )
-                st.success("✅ Documento de clases generado exitosamente.")
-                st.markdown(f"[📝 Ver documento con clases]({link_doc})", unsafe_allow_html=True)
+
+                st.success("✅ Documentos generados exitosamente.")
+                st.markdown(f"[📘 Parte 1: Clases 1–6]({links_docs[0]})", unsafe_allow_html=True)
+                st.markdown(f"[📘 Parte 2: Clases 7–12]({links_docs[1]})", unsafe_allow_html=True)
 
             except Exception as e:
                 st.error(f"Ocurrió un error: {str(e)}")
     else:
-        st.warning("⚠️ Primero debes generar el syllabus y outline con el botón superior.")
-        st.info("Para hacerlo, completa los campos del curso y haz clic en 'Generar Syllabus y Outline'. Luego podrás crear las clases.")
+        st.warning("⚠️ Primero debes generar el syllabus y outline para poder crear las clases.")
