@@ -29,8 +29,7 @@ TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
 
 # === Gemini API ===
 def call_gemini(prompt: str) -> str:
-    #url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
-    url = "https://generativelanguage.googleapis.com/v1beta/models/learnlm-2.0-flash-experimental"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
     headers = {"Content-Type": "application/json"}
     params = {"key": st.secrets["GEMINI_API_KEY"]}
     data = {
@@ -51,56 +50,60 @@ def call_gemini(prompt: str) -> str:
 @st.cache_data(show_spinner=False)
 def generar_datos_generales(nombre_del_curso, nivel, publico, student_persona, siguiente, objetivos_raw):
     prompt = f"""
-Actúa como experto en diseño instruccional.
+    Eres un experto en diseño instruccional y un tutor experimentado, aplicando los principios de la ciencia del aprendizaje
+    para crear experiencias educativas efectivas y atractivas. Tu objetivo es generar un syllabus y outline
+    que fomenten el aprendizaje activo, gestionen la carga cognitiva del estudiante y adapten el contenido
+    a sus necesidades, inspirando curiosidad y profundizando la metacognición.
 
-Con base en los siguientes datos:
-- Curso: {nombre_del_curso}
-- Nivel: {nivel}
-- Público objetivo: {publico}
-- Perfil base del estudiante: {student_persona}
-- Objetivos iniciales: {objetivos_raw}
-- Curso sugerido posterior: {siguiente} (no lo menciones directamente)
 
-Devuélveme lo siguiente, separado por etiquetas:
+    Con base en los siguientes datos:
+    - Curso: {nombre_del_curso}
+    - Nivel: {nivel}
+    - Público objetivo: {publico}
+    - Perfil base del estudiante: {student_persona}
+    - Objetivos iniciales: {objetivos_raw}
+    - Curso sugerido posterior: {siguiente} (no lo menciones directamente)
 
-[PERFIL_INGRESO]
-...
-[OBJETIVOS]
-...
-[PERFIL_EGRESO]
-...
-[OUTLINE]
-...
+    Devuélveme lo siguiente, separado por etiquetas:
 
-Los siguientes campos corresponden a los tres objetivos secundarios clave más importantes. Usa frases claras, distintas y útiles para el diseño del curso:
+    [PERFIL_INGRESO]
+    ...
+    [OBJETIVOS]
+    ...
+    [PERFIL_EGRESO]
+    ...
+    [OUTLINE]
+    ...
 
-[TITULO_PRIMER_OBJETIVO_SECUNDARIO]
-...
+    Los siguientes campos corresponden a los tres objetivos secundarios clave más importantes. Usa frases claras, distintas y útiles para el diseño del curso:
 
-[DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
-...
+    [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
+    ...
 
-[TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
-...
+    [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
+    ...
 
-[DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
-...
+    [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
+    ...
 
-[TITULO_TERCER_OBJETIVO_SECUNDARIO]
-...
+    [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
+    ...
 
-[DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
-...
+    [TITULO_TERCER_OBJETIVO_SECUNDARIO]
+    ...
 
-El outline debe incluir exactamente 12 clases (4 por semana durante 3 semanas) y estar en formato de tabla Markdown con estas columnas:
+    [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
+    ...
 
-| Clase | Título | Conceptos Clave | Objetivo 1 | Objetivo 2 | Objetivo 3 | Descripción |
+    El outline debe incluir exactamente 12 clases (4 por semana durante 3 semanas) y estar en formato de tabla Markdown con estas columnas:
 
-Cada objetivo debe escribirse así dentro de la celda (una línea por campo):
+    | Clase | Título | Conceptos Clave | Objetivo 1 | Objetivo 2 | Objetivo 3 | Descripción |
 
-Título: Analizar datos estructurados  
-Descripción: El estudiante será capaz de identificar patrones y relaciones...
-"""
+    Cada objetivo debe escribirse así dentro de la celda (una línea por campo):
+
+    Título: Analizar datos estructurados  
+    Descripción: El estudiante será capaz de identificar patrones y relaciones...
+    """
     respuesta = call_gemini(prompt)
 
     def extraer(etiqueta):
@@ -141,18 +144,20 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
 
     def pedir_seccion(etiqueta, instruccion):
         prompt = f"""
-Curso: {nombre_del_curso}
-Año: {anio}
-Nivel: {nivel}
-Objetivos: {objetivos_mejorados}
-Perfil de ingreso: {perfil_ingreso}
-Perfil de egreso: {perfil_egreso}
-Outline:
-{outline}
+                Como experto en diseño instruccional y aplicando los principios de LearnLM, genera el siguiente contenido:
 
-Devuelve únicamente el contenido para la sección: [{etiqueta}]
-{instruccion}
-"""
+                Curso: {nombre_del_curso}
+                Año: {anio}
+                Nivel: {nivel}
+                Objetivos: {objetivos_mejorados}
+                Perfil de ingreso: {perfil_ingreso}
+                Perfil de egreso: {perfil_egreso}
+                Outline:
+                {outline}
+
+                Devuelve únicamente el contenido para la sección: [{etiqueta}]
+                {instruccion}
+                """
         respuesta = call_gemini(prompt)
         return respuesta.strip()
 

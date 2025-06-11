@@ -33,51 +33,54 @@ def leer_outline_desde_sheets(sheet_url: str) -> list:
 
 def generar_clase_con_prompt(clase_info: dict, perfil_estudiante: str, industria: str) -> str:
     prompt = f"""
-Actúa como un diseñador instruccional experto con experiencia en tecnología, negocios y analítica de datos. Tu tarea es generar TODO el contenido detallado y final de una clase compuesta por 20 slides.
+        Actúa como un **diseñador instruccional experto y un tutor experimentado** con profunda experiencia en tecnología,
+        negocios y analítica de datos. Tu tarea es generar **TODO el contenido detallado y final de una clase compuesta por 20 slides**,
+        **aplicando los principios de la ciencia del aprendizaje (LearnLM)** para maximizar la comprensión, la retención
+        y la aplicación práctica por parte del estudiante. Fomenta el **aprendizaje activo**, la **curiosidad** y la **reflexión**.
+        Gestiona la **carga cognitiva** presentando la información de forma clara y estructurada.
+        Cada slide debe contener lo siguiente:
 
-Cada slide debe contener lo siguiente:
+        1. TÍTULO en mayúsculas
+        2. TEXTO COMPLETO explicativo (mínimo 5–7 líneas), listo para presentación, sin frases genéricas ni instrucciones. El texto debe estar completo y no depender de intervención humana.
+        3. Un EJEMPLO o caso de uso empresarial ROBUSTO: menciona empresas reales o escenarios de alto valor que generen un *aha moment* al estudiante. Incluye métricas, resultados o decisiones estratégicas.
+        - El caso de uso debe incluir un link funcional y verificable como fuente. Si no hay fuente real, no lo uses.
+        4. Un TIP o recomendación práctica basada en experiencia real.
+        5. Un RECURSO VISUAL sugerido (describe qué se debe mostrar: gráfico, dashboard, proceso, etc.)
 
-1. TÍTULO en mayúsculas
-2. TEXTO COMPLETO explicativo (mínimo 5–7 líneas), listo para presentación, sin frases genéricas ni instrucciones. El texto debe estar completo y no depender de intervención humana.
-3. Un EJEMPLO o caso de uso empresarial ROBUSTO: menciona empresas reales o escenarios de alto valor que generen un *aha moment* al estudiante. Incluye métricas, resultados o decisiones estratégicas.
-   - El caso de uso debe incluir un link funcional y verificable como fuente. Si no hay fuente real, no lo uses.
-4. Un TIP o recomendación práctica basada en experiencia real.
-5. Un RECURSO VISUAL sugerido (describe qué se debe mostrar: gráfico, dashboard, proceso, etc.)
+        ESTRUCTURA DE LOS 20 SLIDES:
 
-ESTRUCTURA DE LOS 20 SLIDES:
+        1. Bienvenida y título de la clase  
+        2. Objetivos de aprendizaje  
+        3. Relevancia del tema en el mundo actual (con fuente real si das datos)  
+        4. Dolor empresarial que resuelve el tema  
+        5. Concepto clave 1: definición clara y utilidad  
+        6. Concepto clave 1: clasificaciones, componentes o tipos  
+        7. Concepto clave 1: caso de uso real con métricas o impacto + link  
+        8. Concepto clave 2: qué es, cómo funciona, rol en la empresa  
+        9. Concepto clave 2: herramientas del mercado con comparación concreta  
+        10. Concepto clave 2: otro ejemplo con link  
+        11. Proceso paso a paso para implementar lo aprendido  
+        12. Errores comunes cometidos por empresas y cómo evitarlos  
+        13. Mitos vs realidades que confunden a los líderes  
+        14. Beneficios tangibles para (costo, ROI, crecimiento)  
+        15. Tips de implementación efectivos en la práctica o tips en general  
+        16. KPIs o métricas clave para evaluar éxito  
+        17. Cómo gestionar resistencia al cambio al aplicar este tema  
+        18. Preguntas reflexivas para el alumno y su contexto  
+        19. Actividad práctica   
+        20. Cierre con resumen y llamada a la acción 
 
-1. Bienvenida y título de la clase  
-2. Objetivos de aprendizaje  
-3. Relevancia del tema en el mundo actual (con fuente real si das datos)  
-4. Dolor empresarial que resuelve el tema  
-5. Concepto clave 1: definición clara y utilidad  
-6. Concepto clave 1: clasificaciones, componentes o tipos  
-7. Concepto clave 1: caso de uso real con métricas o impacto + link  
-8. Concepto clave 2: qué es, cómo funciona, rol en la empresa  
-9. Concepto clave 2: herramientas del mercado con comparación concreta  
-10. Concepto clave 2: otro ejemplo con link  
-11. Proceso paso a paso para implementar lo aprendido  
-12. Errores comunes cometidos por empresas y cómo evitarlos  
-13. Mitos vs realidades que confunden a los líderes  
-14. Beneficios tangibles para (costo, ROI, crecimiento)  
-15. Tips de implementación efectivos en la práctica o tips en general  
-16. KPIs o métricas clave para evaluar éxito  
-17. Cómo gestionar resistencia al cambio al aplicar este tema  
-18. Preguntas reflexivas para el alumno y su contexto  
-19. Actividad práctica   
-20. Cierre con resumen y llamada a la acción 
+        Contexto:
 
-Contexto:
+        - Título de la clase: {clase_info['titulo']}
+        - Descripción: {clase_info['descripcion']}
+        - Objetivos: {clase_info['objetivos']}
+        - Conceptos clave: {clase_info['conceptos']}
+        - Perfil del estudiante: {perfil_estudiante}
+        - Industria de enfoque: {industria}
 
-- Título de la clase: {clase_info['titulo']}
-- Descripción: {clase_info['descripcion']}
-- Objetivos: {clase_info['objetivos']}
-- Conceptos clave: {clase_info['conceptos']}
-- Perfil del estudiante: {perfil_estudiante}
-- Industria de enfoque: {industria}
-
-No uses frases como “puedes incluir” o “se recomienda mostrar”. Escribe el contenido real final como si fuera a presentarse en un aula o sesión empresarial. Evita repeticiones y asegura profundidad en cada slide.
-"""
+        No uses frases como “puedes incluir” o “se recomienda mostrar”. Escribe el contenido real final como si fuera a presentarse en un aula o sesión empresarial. Evita repeticiones y asegura profundidad en cada slide.
+        """
     return call_gemini(prompt)
 
 
