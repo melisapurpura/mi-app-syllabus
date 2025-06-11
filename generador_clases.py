@@ -1,4 +1,3 @@
-import streamlit as st
 import pandas as pd
 import re
 from utils import call_gemini, docs_service, drive_service, sheets_service
@@ -82,7 +81,6 @@ def generar_clase_con_prompt(clase_info: dict, perfil_estudiante: str, industria
 
         No uses frases como “puedes incluir” o “se recomienda mostrar”. Escribe el contenido real final como si fuera a presentarse en un aula o sesión empresarial. Evita repeticiones y asegura profundidad en cada slide.
         """
-    st.session_state["modo_actual"] = "clases"
     return call_gemini(prompt)
 
 

@@ -41,29 +41,10 @@ def call_gemini(prompt: str) -> str:
 
     response = requests.post(url, headers=headers, params=params, json=data)
     if response.status_code == 200:
-        res_json = response.json()
-        output_text = res_json["candidates"][0]["content"]["parts"][0]["text"].strip()
-
-        usage = res_json.get("usageMetadata", {})
-        input_tokens = usage.get("promptTokenCount", 0)
-        output_tokens = usage.get("candidatesTokenCount", 0)
-
-        tipo = st.session_state.get("modo_actual", "otros")
-
-        if "tokens" not in st.session_state:
-            st.session_state["tokens"] = {}
-
-        if tipo not in st.session_state["tokens"]:
-            st.session_state["tokens"][tipo] = {"input": 0, "output": 0}
-
-        st.session_state["tokens"][tipo]["input"] += input_tokens
-        st.session_state["tokens"][tipo]["output"] += output_tokens
-
-        return output_text
+        return response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
     else:
         st.error(f"Error en API Gemini: {response.status_code} - {response.text}")
         raise Exception("Fallo la llamada a Gemini con API Key.")
-
 
 # === Prompting y generación de datos del curso ===
 @st.cache_data(show_spinner=False)
@@ -121,7 +102,6 @@ def generar_datos_generales(nombre_del_curso, nivel, publico, student_persona, s
     Título: Analizar datos estructurados  
     Descripción: El estudiante será capaz de identificar patrones y relaciones...
     """
-    st.session_state["modo_actual"] = "syllabus"
     respuesta = call_gemini(prompt)
 
     def extraer(etiqueta):
@@ -176,7 +156,6 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
                 Devuelve únicamente el contenido para la sección: [{etiqueta}]
                 {instruccion}
                 """
-        st.session_state["modo_actual"] = "syllabus"
         respuesta = call_gemini(prompt)
         return respuesta.strip()
 
@@ -212,7 +191,6 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
     return f"https://docs.google.com/document/d/{document_id}/edit"
 
 def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline):
-    st.session_state["modo_actual"] = "outline"
     lines = [line.strip() for line in outline.splitlines() if "|" in line and not line.startswith("|---")]
     df = pd.read_csv(io.StringIO("\n".join(lines)), sep="|", engine="python", skipinitialspace=True)
     df = df.dropna(axis=1, how="all")
