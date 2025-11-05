@@ -221,6 +221,18 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
         body={"name": f"Syllabus - {nombre_del_curso}"}
     ).execute()
     document_id = template_copy["id"]
+    # 🔐 Dar acceso a todo el dominio datarebels.mx
+    drive_service.permissions().create(
+        fileId=document_id,
+        body={
+            "type": "domain",
+            "role": "writer",      # Usa "reader" si solo quieres lectura
+            "domain": "datarebels.mx",
+            "allowFileDiscovery": True
+        },
+        fields="id"
+    ).execute()
+
 
     replace_placeholder(document_id, "{{nombre_del_curso}}", nombre_del_curso)
     replace_placeholder(document_id, "{{anio}}", str(anio))
@@ -253,6 +265,17 @@ def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ing
         fields="spreadsheetId"
     ).execute()
     spreadsheet_id = sheet["spreadsheetId"]
+   
+    drive_service.permissions().create(
+    fileId=spreadsheet_id,
+    body={
+        "type": "domain",
+        "role": "writer",
+        "domain": "datarebels.mx",
+        "allowFileDiscovery": True
+    },
+    fields="id"
+    ).execute()
 
     values = [df.columns.tolist()] + df.values.tolist()
     sheets_service.spreadsheets().values().update(
