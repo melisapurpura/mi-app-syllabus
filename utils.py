@@ -243,6 +243,11 @@ def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ing
     df = df.dropna(axis=1, how="all")
     df.columns = [col.strip() for col in df.columns]
 
+    # 🔧 Limpieza robusta de datos antes de enviar
+    df = df.fillna("")
+    df = df.astype(str)
+    df = df.applymap(lambda x: re.sub(r"[\r\n\t]", " ", x))
+
     sheet = sheets_service.spreadsheets().create(
         body={"properties": {"title": f"Outline - {nombre_del_curso}"}},
         fields="spreadsheetId"
@@ -258,3 +263,4 @@ def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ing
     ).execute()
 
     return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
+
