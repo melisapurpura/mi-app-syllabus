@@ -1,42 +1,101 @@
 import streamlit as st
 import json
-import tempfile
 import pandas as pd
 import io
 import re
 import requests
-
-from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import Flow
+from google.oauth2.credentials import Credentials
 
-# === Google Services Setup ===
-with tempfile.NamedTemporaryFile(delete=False, suffix=".json", mode="w") as f:
-    json.dump(json.loads(st.secrets["SERVICE_ACCOUNT_JSON"]), f)
-    SERVICE_ACCOUNT_FILE = f.name
-
+# =========================
+# 🔐 CONFIGURACIÓN GOOGLE OAUTH
+# =========================
 SCOPES = [
-    "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/spreadsheets"
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/spreadsheets",
 ]
 
-creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
-docs_service = build("docs", "v1", credentials=creds)
-drive_service = build("drive", "v3", credentials=creds)
-sheets_service = build("sheets", "v4", credentials=creds)
+# === Helper: flujo de autorización ===
+def _build_flow():
+    client_config = {
+        "web": {
+            "client_id": st.secrets["GOOGLE_OAUTH_CLIENT_ID"],
+            "client_secret": st.secrets["GOOGLE_OAUTH_CLIENT_SECRET"],
+            "redirect_uris": [st.secrets["GOOGLE_OAUTH_REDIRECT_URI"]],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }
+    }
+    flow = Flow.from_client_config(client_config, scopes=SCOPES)
+    flow.redirect_uri = st.secrets["GOOGLE_OAUTH_REDIRECT_URI"]
+    return flow
 
-TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
 
-# === Gemini API ===
+def get_google_creds():
+    # 1️⃣ Ya autenticado
+    if "google_creds" in st.session_state:
+        creds_dict = st.session_state["google_creds"]
+        creds = Credentials.from_authorized_user_info(creds_dict, SCOPES)
+        if creds and creds.valid:
+            return creds
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(requests.Request())
+            st.session_state["google_creds"] = json.loads(creds.to_json())
+            return creds
+
+    # 2️⃣ Si vengo del callback de Google (url con ?code=...)
+    params = st.query_params
+    if "code" in params:
+        flow = _build_flow()
+        full_url = st.secrets["GOOGLE_OAUTH_REDIRECT_URI"]
+        if params:
+            q = "&".join([f"{k}={v[0] if isinstance(v, list) else v}" for k, v in params.items()])
+            full_url = f"{full_url}?{q}"
+        flow.fetch_token(authorization_response=full_url)
+        creds = flow.credentials
+        st.session_state["google_creds"] = json.loads(creds.to_json())
+        st.query_params.clear()
+        return creds
+
+    # 3️⃣ Mostrar botón de autorización si no hay sesión
+    st.subheader("🔐 Conecta tu cuenta de Google Drive/Docs/Sheets")
+    if st.button("Conectar con Google"):
+        flow = _build_flow()
+        auth_url, state = flow.authorization_url(
+            access_type="offline",
+            prompt="consent",
+            include_granted_scopes="true"
+        )
+        st.session_state["oauth_state"] = state
+        st.markdown(f"[Haz clic aquí para autorizar tu cuenta de Google]({auth_url})")
+        st.stop()
+
+    st.stop()
+
+
+def build_services():
+    creds = get_google_creds()
+    docs_service = build("docs", "v1", credentials=creds)
+    drive_service = build("drive", "v3", credentials=creds)
+    sheets_service = build("sheets", "v4", credentials=creds)
+    return docs_service, drive_service, sheets_service
+
+
+# === Inicializamos los servicios globales ===
+docs_service, drive_service, sheets_service = build_services()
+
+# =========================
+# 🤖 GEMINI API
+# =========================
 def call_gemini(prompt: str) -> str:
     url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
     headers = {"Content-Type": "application/json"}
     params = {"key": st.secrets["GEMINI_API_KEY"]}
     data = {
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "maxOutputTokens": 3000
-        }
+        "generationConfig": {"maxOutputTokens": 3000},
     }
 
     response = requests.post(url, headers=headers, params=params, json=data)
@@ -46,7 +105,10 @@ def call_gemini(prompt: str) -> str:
         st.error(f"Error en API Gemini: {response.status_code} - {response.text}")
         raise Exception("Fallo la llamada a Gemini con API Key.")
 
-# === Prompting y generación de datos del curso ===
+
+# =========================
+# 🧠 PROMPTING Y LÓGICA DE GENERACIÓN
+# =========================
 @st.cache_data(show_spinner=False)
 def generar_datos_generales(nombre_del_curso, nivel, publico, student_persona, siguiente, objetivos_raw):
     prompt = f"""
@@ -54,7 +116,6 @@ def generar_datos_generales(nombre_del_curso, nivel, publico, student_persona, s
     para crear experiencias educativas efectivas y atractivas. Tu objetivo es generar un syllabus y outline
     que fomenten el aprendizaje activo, gestionen la carga cognitiva del estudiante y adapten el contenido
     a sus necesidades, inspirando curiosidad y profundizando la metacognición.
-
 
     Con base en los siguientes datos:
     - Curso: {nombre_del_curso}
@@ -77,30 +138,20 @@ def generar_datos_generales(nombre_del_curso, nivel, publico, student_persona, s
 
     [TITULO_PRIMER_OBJETIVO_SECUNDARIO]
     ...
-
     [DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO]
     ...
-
     [TITULO_SEGUNDO_OBJETIVO_SECUNDARIO]
     ...
-
     [DESCRIPCION_SEGUNDO_OBJETIVO_SECUNDARIO]
     ...
-
     [TITULO_TERCER_OBJETIVO_SECUNDARIO]
     ...
-
     [DESCRIPCION_TERCER_OBJETIVO_SECUNDARIO]
     ...
 
     El outline debe incluir exactamente 12 clases (4 por semana durante 3 semanas) y estar en formato de tabla Markdown con estas columnas:
 
     | Clase | Título | Conceptos Clave | Objetivo 1 | Objetivo 2 | Objetivo 3 | Descripción |
-
-    Cada objetivo debe escribirse así dentro de la celda (una línea por campo):
-
-    Título: Analizar datos estructurados  
-    Descripción: El estudiante será capaz de identificar patrones y relaciones...
     """
     respuesta = call_gemini(prompt)
 
@@ -113,8 +164,6 @@ def generar_datos_generales(nombre_del_curso, nivel, publico, student_persona, s
     objetivos = extraer("OBJETIVOS")
     perfil_egreso = extraer("PERFIL_EGRESO")
     outline = extraer("OUTLINE")
-
-    # Nuevos campos: objetivos secundarios
     titulo1 = extraer("TITULO_PRIMER_OBJETIVO_SECUNDARIO")
     desc1 = extraer("DESCRIPCION_PRIMER_OBJETIVO_SECUNDARIO")
     titulo2 = extraer("TITULO_SEGUNDO_OBJETIVO_SECUNDARIO")
@@ -124,7 +173,8 @@ def generar_datos_generales(nombre_del_curso, nivel, publico, student_persona, s
 
     return perfil_ingreso, objetivos, perfil_egreso, outline, titulo1, desc1, titulo2, desc2, titulo3, desc3
 
-# === Placeholder replacement ===
+
+# === REEMPLAZO DE PLACEHOLDERS EN LA PLANTILLA ===
 def replace_placeholder(document_id, placeholder, new_text):
     requests = [{
         "replaceAllText": {
@@ -134,7 +184,12 @@ def replace_placeholder(document_id, placeholder, new_text):
     }]
     docs_service.documents().batchUpdate(documentId=document_id, body={"requests": requests}).execute()
 
-# === Generación del syllabus usando objetivos directamente ===
+
+# =========================
+# 📄 GENERACIÓN DE SYLLABUS Y OUTLINE
+# =========================
+TEMPLATE_ID = "1I2jMQ1IjmG6_22dC7u6LYQfQzlND4WIvEusd756LFuo"
+
 def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publico, siguiente,
                                perfil_ingreso, perfil_egreso, outline,
                                titulo1, desc1, titulo2, desc2, titulo3, desc3):
@@ -142,20 +197,18 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
 
     def pedir_seccion(etiqueta, instruccion):
         prompt = f"""
-                Como experto en diseño instruccional y aplicando los principios de LearnLM, genera el siguiente contenido:
-
-                Curso: {nombre_del_curso}
-                Año: {anio}
-                Nivel: {nivel}
-                Objetivos: {objetivos_mejorados}
-                Perfil de ingreso: {perfil_ingreso}
-                Perfil de egreso: {perfil_egreso}
-                Outline:
-                {outline}
-
-                Devuelve únicamente el contenido para la sección: [{etiqueta}]
-                {instruccion}
-                """
+        Como experto en diseño instruccional y aplicando los principios de LearnLM, genera el siguiente contenido:
+        Curso: {nombre_del_curso}
+        Año: {anio}
+        Nivel: {nivel}
+        Objetivos: {objetivos_mejorados}
+        Perfil de ingreso: {perfil_ingreso}
+        Perfil de egreso: {perfil_egreso}
+        Outline:
+        {outline}
+        Devuelve únicamente el contenido para la sección: [{etiqueta}]
+        {instruccion}
+        """
         respuesta = call_gemini(prompt)
         return respuesta.strip()
 
@@ -174,7 +227,6 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
     replace_placeholder(document_id, "{{generalidades_del_programa}}", generalidades)
     replace_placeholder(document_id, "{{perfil_ingreso}}", ingreso)
     replace_placeholder(document_id, "{{detalles_plan_estudios}}", detalles)
-
     replace_placeholder(document_id, "{{titulo_primer_objetivo_secundario}}", titulo1)
     replace_placeholder(document_id, "{{descripcion_primer_objetivo_secundario}}", desc1)
     replace_placeholder(document_id, "{{titulo_segundo_objetivo_secundario}}", titulo2)
@@ -182,13 +234,8 @@ def generar_syllabus_completo(nombre_del_curso, nivel, objetivos_mejorados, publ
     replace_placeholder(document_id, "{{titulo_tercer_objetivo_secundario}}", titulo3)
     replace_placeholder(document_id, "{{descripcion_tercer_objetivo_secundario}}", desc3)
 
-    drive_service.permissions().create(
-        fileId=document_id,
-        body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
-        fields="id"
-    ).execute()
-
     return f"https://docs.google.com/document/d/{document_id}/edit"
+
 
 def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ingreso, siguiente, outline):
     lines = [line.strip() for line in outline.splitlines() if "|" in line and not line.startswith("|---")]
@@ -208,32 +255,6 @@ def generar_outline_csv(nombre_del_curso, nivel, objetivos_mejorados, perfil_ing
         range="A1",
         valueInputOption="RAW",
         body={"values": values}
-    ).execute()
-
-    # Estética: encabezado congelado y color
-    requests = [
-        {"updateSheetProperties": {
-            "properties": {"gridProperties": {"frozenRowCount": 1}},
-            "fields": "gridProperties.frozenRowCount"
-        }},
-        {"repeatCell": {
-            "range": {"startRowIndex": 0, "endRowIndex": 1},
-            "cell": {"userEnteredFormat": {
-                "backgroundColor": {"red": 0.2, "green": 0.2, "blue": 0.2},
-                "textFormat": {"foregroundColor": {"red": 1.0, "green": 1.0, "blue": 1.0}, "bold": True}
-            }},
-            "fields": "userEnteredFormat(backgroundColor,textFormat)"
-        }}
-    ]
-    sheets_service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
-        body={"requests": requests}
-    ).execute()
-
-    drive_service.permissions().create(
-        fileId=spreadsheet_id,
-        body={"type": "domain", "role": "writer", "domain": "datarebels.mx"},
-        fields="id"
     ).execute()
 
     return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
